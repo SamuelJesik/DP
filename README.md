@@ -1,7 +1,4 @@
-# Diplomová práca: Využitie UI v procese výuky programovania
-
-Diplomová práca **“Využitie UI v procese výučby programovania”** (Bc. Samuel Ješík, FMFI UK).
-
+# Diplomová práca: Využitie UI v procese výuky programovania (Bc. Samuel Ješík, FMFI UK)
 ---
 
 ## Prehľad
