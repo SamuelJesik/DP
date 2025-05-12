@@ -1,4 +1,4 @@
-# Diplomová práca: Využitie UI v procese výuky programovania (Bc. Samuel Ješík, FMFI UK)
+# Diplomová práca: Využitie UI v procese výuky programovania
 ---
 
 ## Prehľad
@@ -33,3 +33,6 @@ Webová aplikácia umožňuje študentom:
 
 4. **V prehliadači choďte na**
  - http://127.0.0.1:8000/myapp
+
+
+- © 2025 Bc. Samuel Ješík — Fakulta matematiky, fyziky a informatiky, Univerzita Komenského v Bratislave
