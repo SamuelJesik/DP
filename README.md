@@ -10,7 +10,6 @@ Webová aplikácia umožňuje študentom:
 - písanie a spúšťanie kódu (Python, C++, Java) v izolovanom Docker-sandboxe  
 - generovanie a hodnotenie testov  
 - refaktoring a analýzu AI-generovaného kódu  
-- zber dát prostredníctvom online dotazníka  
 
 ---
 
@@ -30,10 +29,10 @@ Webová aplikácia umožňuje študentom:
    
 2. **Aktivujte virtuálne prostredie**
 
-.\venv\Scripts\Activate.ps1   # Windows PowerShell
+  - .\venv\Scripts\Activate.ps1   # Windows PowerShell
 
 3. **Spustite server**
-python manage.py runserver
+ - python manage.py runserver
 
 4. **V prehliadači choďte na**
-http://127.0.0.1:8000/myapp
+ - http://127.0.0.1:8000/myapp
