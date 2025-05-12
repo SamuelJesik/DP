@@ -1,6 +1,6 @@
 # Diplomová práca: Využitie UI v procese výuky programovania
 
-Tento repozitár obsahuje zdrojové kódy a materiály k diplomovej práci **“Využitie UI v procese výučby programovania”** (Bc. Samuel Ješík, FMFI UK).
+Diplomová práca **“Využitie UI v procese výučby programovania”** (Bc. Samuel Ješík, FMFI UK).
 
 ---
 
