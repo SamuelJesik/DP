@@ -35,4 +35,4 @@ Webová aplikácia umožňuje študentom:
  - http://127.0.0.1:8000/myapp
 
 
-© 2025 Bc. Samuel Ješík — Fakulta matematiky, fyziky a informatiky, Univerzita Komenského v Bratislave
+© 2025/2026 Bc. Samuel Ješík — Fakulta matematiky, fyziky a informatiky, Univerzita Komenského v Bratislave
