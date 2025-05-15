@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prihlásenie</title>
+    {% load static %}
+<link rel="stylesheet" href="{% static 'css/styles.css' %}" />
+</head>
+{% if not request.user.is_authenticated %}
+{% endif %}
+    <div class="login-container">
+        <h1>Vitajte</h1>
+        <form class ="login-form" method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Prihlásiť sa</button>
+            <p>Nemáte účet? <a href="{% url 'register' %}">Zaregistrujte sa</a>.</p>
+
+        </form>
+    </div>
+<footer>
+    <p>Aplikáciu pôvodne vytvoril a navrhol Bc. Samuel Ješík v 2026 ako diplomovú prácu na škole Univerzita Komenského v
+        Bratislave, Fakulta matematiky, fyziky a informatiky.</p>
+</footer>
+</body>
+</html>

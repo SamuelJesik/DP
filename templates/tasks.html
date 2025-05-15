@@ -1,0 +1,20 @@
+<!-- myapp/templates/tasks.html -->
+
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<!--<div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url('{% static 'logo2.png' %}'); background-size: cover; background-repeat: no-repeat; background-position: center center; opacity: 0.5; z-index: -1;"></div>-->
+<div class="content">
+    <h2>Zoznam Úloh</h2>
+    <ul class="tasks-grid">
+        {% for task in tasks %}
+        <!-- <li><a href="{% url 'task_detail' task.id %}">{{ task.title }}</a></li>-->
+        <li>TEST</li>
+
+        {% empty %}
+        <li>Žiadne úlohy.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

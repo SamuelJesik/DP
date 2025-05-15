@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+
+{% load static %} 
+
+<!-- myapp/templates/task_detail.html -->
+
+
+{% block extra_head %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js" type="text/javascript" charset="utf-8"></script>
+
+<script>
+    var readOnlyCode = `{{ task.input_code|escapejs }}`;
+    var expectedOutput = `{{ task.expected_output|escapejs }}`;
+</script>
+
+<script type="text/javascript">
+    var csrfToken = "{{ csrf_token }}";
+</script>   
+
+    <!-- runcode -->
+<div id="task-data" data-task-id="{{ task.id }}" style="display: none;"></div>
+
+
+    <script src="{% static 'js/script.js' %}"></script>
+    {% endblock extra_head %}
+
+{% block content %}
+<div class="content">
+    <h2>{{ task.title }}</h2>
+<div class="task-description-container">
+    <h2 class="task-description-header">Zadanie</h2>
+    <h3 class="task-description-subheader">Váš finálny výsledok bude vždy dodatočne manuálne skontrolovaný!</h3>
+    <div class="task-description">
+        <p>{{ task.description }}</p>
+    </div>
+</div>
+
+
+<button id="toggle-ratings" class="btn btn-info">Zobraziť hodnotenie</button>
+
+<div id="ratings-container" style="display: none;">
+    <h3>Vaše hodnotenie:</h3>
+    {% for rating in ratings %}
+        <div class="rating-item">
+            <p>Hodnotenie: {{ rating.rating }}</p>
+            <p>Feedback: {{ rating.feedback }}</p>
+            <p>Ohodnotené dňa: {{ rating.created_at|date:"d.m.Y H:i" }}</p>
+        </div>
+    {% empty %}
+        <p>Zatiaľ ste nedostali žiadne hodnotenie.</p>
+    {% endfor %}
+</div>
+
+
+
+
+<div class="editor-container">
+    <!--  Read-Only Editor -->
+    <div class="editor-wrapper">
+        <h2 class="editor-header">Zadanie kódu:</h2>
+        <div id="readonly-editor" class="ace-editor"></div>
+    </div>
+    
+    <!--  Editable Editor -->
+    <div class="editor-wrapper">
+        <h2 class="editor-header">Vaše riešenie:</h2>
+        <div id="editor" class="ace-editor"></div>
+        <button id="run-code" class="run-button">Run</button>
+    
+    </div>
+
+    <!-- New Unit Tests Editor -->
+    <div class="editor-wrapper">
+        <h2 class="editor-header">Unit Testy:</h2>
+        <div id="unit-tests-editor" class="ace-editor"></div>
+        <button id="show-results">Zobraziť Výsledky Testov</button>
+    </div>
+</div>
+
+<div id="expandable-test-results" class="expandable-results" style="display: none;">
+    <pre id="expanded-test-results-output"></pre>
+    </div>
+
+<div id="testResultsModal" class="modal">
+  <div class="modal-content">
+    <span class="close-button">×</span>
+    <h2>Výsledky Testov</h2>
+    <pre id="test-results-output"></pre>
+  </div>
+</div>
+
+    
+    
+    
+<div class="form-container">
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" id="fileInput" name="file"accept=".py" style="display:none;">
+        {% csrf_token %}
+        <span id="file-chosen">Please choose a file.</span> 
+        <button type="button" id="uploadBtn">Choose File</button> 
+        <button type="submit" id="submitBtn">Upload</button>
+    </form>
+</div>
+
+    {% for uploaded_file in uploaded_files %}
+    <div class="uploaded-file-item">
+        <p>{{ forloop.counter }}. File:
+            <a href="{{ uploaded_file.file.url }}" class="uploaded-file-link" download="{{ uploaded_file.file.name }}">
+                {{ uploaded_file.file.name|cut:"uploads/" }}
+            </a>
+        </p>
+        <p class="uploaded-file-info">Uploaded at: {{ uploaded_file.uploaded_at }}</p>
+    </div>
+{% endfor %}
+
+<!-- Výsledky zbehnutia kódu... -->
+{% for coderun in coderuns %}
+<div class="code-run-item">
+    <button class="toggle-details-btn">Detaily zbehnutia #{{ forloop.counter }}</button>
+    <div class="code-run-details" style="display: none;">
+        <pre>{{ coderun.code }}</pre>
+        <p>Output:</p>
+        <pre>{{ coderun.output }}</pre>
+        <p>Tests Output:</p>
+        <pre>{{ coderun.tests_output }}</pre>
+        <p class="code-run-info">Created At: {{ coderun.created_at }}</p>
+    </div>
+</div>
+{% endfor %}
+
+</div>
+
+<script>
+    window.addEventListener('DOMContentLoaded', (event) => {
+      {% for message in messages %}
+      Swal.fire({
+        title: "{{ message.tags|title }}",
+        text: "{{ message }}",
+        icon: "{{ message.tags }}",
+        confirmButtonText: 'OK'
+      });
+      {% endfor %}
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var container = document.getElementById('ratings-container');
+        container.style.maxHeight = '0px';
+    
+        document.getElementById('toggle-ratings').addEventListener('click', function() {
+            console.log('Kliknuté na tlačidlo "Zobraziť hodnotenia"');
+            console.log('Aktuálna maximálna výška:', container.style.maxHeight);
+    
+            if (container.style.maxHeight === '0px') {
+                console.log('Rozbalovanie hodnotení');
+                container.style.maxHeight = '5000px';
+                container.style.padding = '20px';
+                container.style.display = 'block'; 
+            } else {
+                console.log('Zbalovanie hodnotení');
+                container.style.maxHeight = '0px';
+                container.style.padding = '0';
+                container.style.display = 'none';
+
+            }
+        });
+    });
+  </script>
+{% endblock %}

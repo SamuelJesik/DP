@@ -1,0 +1,82 @@
+<!-- myapp/templates/base.html -->
+
+{% load static %}
+{% load i18n %}  
+
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DP{% endblock title %}</title>
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link href='https://fonts.googleapis.com/css?family=Fira Code' rel='stylesheet'>
+
+    {% block extra_head %}{% endblock extra_head %}
+</head>
+<body style="display: flex; flex-direction: column; min-height: 100vh;">
+
+
+    {% if request.session.show_welcome %}
+    <div id="welcome-box" class="welcome-box">
+        <p>Boli ste úspešné prihlásený(a) do systému.   </p>
+    </div>
+    {% endif %}
+
+
+{% if messages %}
+  <ul class="messages">
+    {% for message in messages %}
+      <li class="{{ message.tags }}">{{ message }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+<header>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-left">
+                
+                {% if request.user.is_authenticated %}
+                    <div class="user-info">
+                        <span>{% trans "Vitajte" %}, {{ request.user.get_full_name|default:request.user.username }}</span>
+                        <a href="{% url 'logout' %}" class="logout-link">{% trans "Odhlásiť sa" %}</a>
+                    </div>
+                {% else %}
+                    <a href="{% url 'login' %}" class="login-link">{% trans "Log in" %}</a>
+                    <a href="{% url 'register' %}" class="register-link">{% trans "Register" %}</a>
+                {% endif %}
+            </div>
+            
+            <!-- Navigation items next to the user info -->
+            <ul class="nav-list">
+                <li class="nav-item"><a href="{% url 'index' %}">Domov</a></li>
+                <li class="nav-item"><a href="{% url 'index' %}">CONSTRUCTION SITE </a></li>
+                {% if request.user.is_superuser %}
+                <li class="nav-item"><a href="{% url 'add_task' %}">Pridať Úlohu</a></li>
+                {% endif %}
+                <li class="nav-item"><a href="{% url 'tasks' %}">Zoznam Úloh</a></li>
+                {% if request.user.is_superuser %}
+                 <!-- <li class="nav-item"><a href="{% url 'rating_view' %}">Hodnotenie</a></li> -->
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+</header>
+
+
+<div class="content">
+    {% block content %}
+    {% endblock content %}
+</div>
+
+<footer>
+    <p>Aplikáciu pôvodne vytvoril a navrhol Bc. Samuel Ješík v 2026 ako diplomovú prácu na škole Univerzita Komenského v
+        Bratislave, Fakulta matematiky, fyziky a informatiky.</p>
+</footer>
+
+{% block extra_js %}{% endblock extra_js %}
+
+</body>
+</html>

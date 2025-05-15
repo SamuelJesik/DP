@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2 style="text-align: center;">Pridať novú úlohu</h2>
+<div class="add_container">
+    <form method="post">
+        {% csrf_token %}
+        <label for="id_title">Title:</label>
+        <input type="text" id="id_title" name="title" placeholder="Názov úlohy">
+
+        <label for="id_description">Description:</label>
+        <textarea id="id_description" name="description" placeholder="Opis úlohy" rows="4"></textarea>
+
+        <label for="id_input_code">Input Code:</label>
+        <textarea id="id_input_code" name="input_code" placeholder="Vstupný kód" rows="4"></textarea>
+
+        <label for="id_expected_output">Unit testy:</label>
+        <textarea id="id_expected_output" name="expected_output" placeholder="Unit testy pre kód (testovací súbor treba pridať manuálne)" rows="4"></textarea>
+
+        <button type="submit" id="task_add_button">Uložiť Úlohu</button>
+    </form>
+</div>
+
+<script>
+    window.addEventListener('DOMContentLoaded', (event) => {
+      {% for message in messages %}
+      Swal.fire({
+        title: "{{ message.tags|title }}",
+        text: "{{ message }}",
+        icon: "{{ message.tags }}",
+        confirmButtonText: 'OK'
+      });
+      {% endfor %}
+    });
+</script>
+{% endblock %}
