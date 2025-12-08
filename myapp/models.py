@@ -18,15 +18,22 @@ class PathAndRename(object):
 path_and_rename = PathAndRename("uploads")
 
 
-
+LANGUAGE_CHOICES = [
+    ('python', 'Python'),
+    ('cpp', 'C++'),
+    ('java', 'Java'),
+]
 
 class RefactoringTask(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
+    language = models.CharField(max_length=10, choices=LANGUAGE_CHOICES, default='python')
     input_code = models.TextField(help_text="Pôvodný kód na refaktorizáciu vložte sem.")
     expected_output = models.TextField(help_text="Unit testy ktoré budú spúštané na kód (testovací súbor treba pridať manuálne.).", null=True, blank=True)
     code_file = models.FileField(upload_to='uploads/', null=True, blank=True)
 
+    def __str__(self):
+        return f"{self.title} ({self.get_language_display()})" 
 
 class CodeRun(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

@@ -1,13 +1,13 @@
 /media/uploads/*
 !/media/uploads/.gitkeep
 
-
+/test_directory
 /uploads/
 
 /debug.log
 
-/templates/rating.html
-/templates/task_detail_admin.html
+#/templates/rating.html
+#/templates/task_detail_admin.html
 
-/test_directory/*
-!/test_directory/.gitkeep
+#/test_directory/*
+#!/test_directory/.gitkeep

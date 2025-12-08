@@ -1,0 +1,128 @@
+/* myapp/static/css/add_task_styles.css */
+
+/* --- HLAVNÝ KONTAJNER --- */
+.add_container {
+    max_width: 800px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.add_container form {
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- LABELY A VSTUPY --- */
+.add_container label {
+    display: block;
+    margin-bottom: 8px;
+    margin-top: 15px; 
+    font-weight: bold;
+    color: #333;
+    text-align: left;
+}
+
+.add_container input[type="text"],
+.add_container textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-sizing: border-box; 
+    font-family: inherit;
+    font-size: 14px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.add_container input[type="text"]:focus,
+.add_container textarea:focus {
+    border-color: #1976d2;
+    outline: none;
+    box-shadow: 0 0 5px rgba(25, 118, 210, 0.2);
+}
+
+/* --- TLAČIDLO ULOŽIŤ --- */
+button#task_add_button {
+    width: 100%;
+    padding: 12px 20px;
+    background-color: #28a745; 
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 30px;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+button#task_add_button:hover {
+    background-color: #218838;
+}
+
+/* --- VÝBER JAZYKA (Language Selector) --- */
+.language-selector {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.lang-radio {
+    display: none;
+}
+
+/* Dizajn pre tlačidlo jazyka */
+.lang-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100px;
+    height: 100px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: #f9f9f9;
+    color: #555;
+}
+
+.lang-label:hover {
+    border-color: #b0bec5;
+    background-color: #f1f1f1;
+    transform: translateY(-2px);
+}
+
+/* Ikonky (obrázky) */
+.lang-icon {
+    width: 40px;       
+    height: 40px;
+    margin-bottom: 8px;
+    object-fit: contain;
+}
+
+/* Keď je jazyk vybratý (Checked State) */
+.lang-radio:checked + .lang-label {
+    border-color: #1976d2;
+    background-color: #e3f2fd;
+    color: #1565c0;
+    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
+    font-weight: bold;
+}
+
+/* Špecifické farby po zakliknutí */
+.lang-radio[value="python"]:checked + .lang-label { 
+    border-color: #ffca28; color: #f57f17; background-color: #fff8e1; 
+}
+.lang-radio[value="cpp"]:checked + .lang-label { 
+    border-color: #0277bd; color: #01579b; background-color: #e1f5fe; 
+}
+.lang-radio[value="java"]:checked + .lang-label { 
+    border-color: #d32f2f; color: #b71c1c; background-color: #ffebee; 
+}

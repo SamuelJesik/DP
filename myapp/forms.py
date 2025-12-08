@@ -7,7 +7,12 @@ from django.contrib.auth.models import User
 class RefactoringTaskForm(forms.ModelForm):
     class Meta:
         model = RefactoringTask
-        fields = ['title', 'description', 'input_code', 'expected_output', 'code_file']
+        fields = ['language', 'title', 'description', 'input_code', 'expected_output', 'code_file']
+        
+        widgets = {
+            'input_code': forms.Textarea(attrs={'class': 'ace-editor-input', 'rows': 15}),
+            'expected_output': forms.Textarea(attrs={'rows': 10}),
+        }
 
 class UploadCodeForm(forms.ModelForm):
     class Meta:

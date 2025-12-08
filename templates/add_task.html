@@ -1,25 +1,113 @@
 {% extends 'base.html' %}
+{% load static %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/add_task.css' %}">
+{% endblock %}
 
 {% block content %}
-<h2 style="text-align: center;">Pridať novú úlohu</h2>
+<h2 style="text-align: center; margin-top: 30px;">Pridať novú úlohu</h2>
+
 <div class="add_container">
+    
+    <div style="background-color: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #90caf9;">
+        <h3 style="margin-top: 0; color: #1565c0; font-size: 1.2rem;">🤖 AI Asistent (Ollama)</h3>
+        <p style="font-size: 0.9em; color: #555; margin-bottom: 10px;">
+            Nechce sa ti vymýšľať zadanie? Klikni a nechaj AI vygenerovať všetko za teba.
+        </p>
+        
+        <button type="button" id="ai-btn" style="background-color: #1976d2; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+            ✨ Vygenerovať zadanie cez AI
+        </button>
+        <span id="ai-status" style="margin-left: 15px; font-weight: bold; color: #333; font-size: 0.9em;"></span>
+    </div>
     <form method="post">
         {% csrf_token %}
-        <label for="id_title">Title:</label>
-        <input type="text" id="id_title" name="title" placeholder="Názov úlohy">
 
-        <label for="id_description">Description:</label>
-        <textarea id="id_description" name="description" placeholder="Opis úlohy" rows="4"></textarea>
+        <label style="margin-top: 0;">Vyber programovací jazyk:</label>
+        <div class="language-selector">
+            
+            <label>
+                <input type="radio" name="language" value="python" class="lang-radio" checked>
+                <div class="lang-label">
+                    <img src="{% static 'css/python.png' %}" alt="Python" class="lang-icon">
+                    <span>Python</span>
+                </div>
+            </label>
 
-        <label for="id_input_code">Input Code:</label>
-        <textarea id="id_input_code" name="input_code" placeholder="Vstupný kód" rows="4"></textarea>
+            <label>
+                <input type="radio" name="language" value="cpp" class="lang-radio">
+                <div class="lang-label">
+                    <img src="{% static 'css/c.png' %}" alt="C++" class="lang-icon">
+                    <span>C++</span>
+                </div>
+            </label>
 
-        <label for="id_expected_output">Unit testy:</label>
-        <textarea id="id_expected_output" name="expected_output" placeholder="Unit testy pre kód (testovací súbor treba pridať manuálne)" rows="4"></textarea>
+            <label>
+                <input type="radio" name="language" value="java" class="lang-radio">
+                <div class="lang-label">
+                    <img src="{% static 'css/java.png' %}" alt="Java" class="lang-icon">
+                    <span>Java</span>
+                </div>
+            </label>
+        </div>
+        <label for="id_title">Názov úlohy:</label>
+        <input type="text" id="id_title" name="title" placeholder="Napr. Refaktorizácia Bubble Sortu">
 
-        <button type="submit" id="task_add_button">Uložiť Úlohu</button>
+        <label for="id_description">Popis zadania:</label>
+        <textarea id="id_description" name="description" placeholder="Vysvetli študentovi, čo je cieľom..." rows="4"></textarea>
+
+        <label for="id_input_code">Vstupný kód (Broken Code):</label>
+        <textarea id="id_input_code" name="input_code" placeholder="Sem vlož kód, ktorý treba opraviť..." rows="10" style="font-family: monospace; background-color: #f8f9fa;"></textarea>
+
+        <label for="id_expected_output">Unit testy (Python kód):</label>
+        <textarea id="id_expected_output" name="expected_output" placeholder="import unittest..." rows="6" style="font-family: monospace; background-color: #f8f9fa;"></textarea>
+
+        <button type="submit" id="task_add_button">💾 Uložiť Úlohu</button>
     </form>
 </div>
+
+<script>
+    document.getElementById('ai-btn').addEventListener('click', function() {
+        const btn = this;
+        const status = document.getElementById('ai-status');
+        
+        const selectedLang = document.querySelector('input[name="language"]:checked').value;
+        
+        btn.disabled = true;
+        btn.style.opacity = "0.7";
+        btn.innerText = "Generujem...";
+        status.innerText = `⏳ Generujem zadanie pre ${selectedLang.toUpperCase()}...`;
+        status.style.color = "#1565c0";
+
+        fetch(`/myapp/api/generate-task/?lang=${selectedLang}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    status.innerText = "❌ Chyba: " + data.error;
+                    status.style.color = "red";
+                } else {
+                    document.getElementById('id_title').value = data.title || "";
+                    document.getElementById('id_description').value = data.description || "";
+                    document.getElementById('id_input_code').value = data.input_code || "";
+                    document.getElementById('id_expected_output').value = data.expected_output || "";
+                    
+                    status.innerText = "✅ Hotovo!";
+                    status.style.color = "green";
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                status.innerText = "❌ Chyba siete.";
+                status.style.color = "red";
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.style.opacity = "1";
+                btn.innerText = "✨ Vygenerovať zadanie cez AI";
+            });
+    });
+</script>
 
 <script>
     window.addEventListener('DOMContentLoaded', (event) => {

@@ -1,19 +1,60 @@
-<!-- myapp/templates/tasks.html -->
-
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/tasks.css' %}">
+{% endblock %}
+
 {% block content %}
-<!--<div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url('{% static 'logo2.png' %}'); background-size: cover; background-repeat: no-repeat; background-position: center center; opacity: 0.5; z-index: -1;"></div>-->
 <div class="content">
-    <h2>Zoznam Úloh</h2>
+    <h2 class="tasks-title">Zoznam úloh na refaktorizáciu</h2>
+
+    <div class="controls-container">
+        
+        <div class="sort-buttons">
+            <span class="sort-label">Zoradiť podľa:</span>
+            <a href="?sort=-id" class="btn-sort {% if current_sort == '-id' %}active{% endif %}">Najnovšie</a>
+            <a href="?sort=title" class="btn-sort {% if current_sort == 'title' %}active{% endif %}">Názov (A-Z)</a>
+            <a href="?sort=language" class="btn-sort {% if current_sort == 'language' %}active{% endif %}">Jazyk</a>
+        </div>
+
+        
+    </div>
+
     <ul class="tasks-grid">
         {% for task in tasks %}
-        <!-- <li><a href="{% url 'task_detail' task.id %}">{{ task.title }}</a></li>-->
-        <li>TEST</li>
-
+            <li class="task-card">
+                <a href="{% url 'task_detail' task.id %}" class="task-link">
+                    <div class="task-header">
+                        <span class="task-name">{{ task.title }}</span>
+                        
+                        <div class="lang-icon-small">
+                            {% if task.language == 'python' %}
+                                <img src="{% static 'css/python.png' %}" alt="Python" title="Python">
+                            {% elif task.language == 'cpp' %}
+                                <img src="{% static 'css/c.png' %}" alt="C++" title="C++">
+                            {% elif task.language == 'java' %}
+                                <img src="{% static 'css/java.png' %}" alt="Java" title="Java">
+                            {% else %}
+                                <span class="unknown-lang">❓</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <p class="task-desc">{{ task.description|truncatewords:20 }}</p>
+                    
+                    <div class="task-footer">
+                        <span class="task-id">#{{ task.id }}</span>
+                        <span class="task-lang-tag {{ task.language }}">
+                            {{ task.get_language_display }}
+                        </span>
+                    </div>
+                </a>
+            </li>
         {% empty %}
-        <li>Žiadne úlohy.</li>
+            <li class="empty-message">
+                <p>Zatiaľ nie sú žiadne úlohy.</p>
+            </li>
         {% endfor %}
     </ul>
 </div>

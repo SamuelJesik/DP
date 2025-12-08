@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block content %}
+<div class="content">
+  <h2>Hodnotenie študentov</h2>
+  <ul class="rating-grid">
+    {% for student in students %}
+  <div class="student-container">
+    <div class="student-info">
+      <p>Meno: {{ student.username }}</p>
+      <p>E-mail: {{ student.email }}</p>
+      <button class="show-tasks-btn" data-user-id="{{ student.id }}">Zobraziť úlohy</button>
+    </div>
+    <ul class="tasks-list" style="display:none;"></ul>
+  </div>
+{% endfor %}
+
+  </ul>
+</div>
+
+<script>
+    document.querySelectorAll('.show-tasks-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const userId = this.getAttribute('data-user-id');
+            const studentContainer = this.closest('.student-container');
+            const tasksList = studentContainer.querySelector('.tasks-list');
+
+            console.log("Button for user ID " + userId + " clicked.");
+
+            if (tasksList.style.display === 'none' || tasksList.style.display === '') {
+                const url = `/myapp/get-tasks-for-student/${userId}/`;
+                console.log("Fetching tasks from URL: ", url);
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok: ' + response.statusText);
+                        }
+                        console.log("Response received.");
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log("Data received: ", data);
+                        tasksList.innerHTML = ''; 
+                        data.tasks.forEach(task => {
+                  
+                            tasksList.innerHTML += `<li><a href="/myapp/students/${userId}/tasks/${task.id}/">${task.title}</a></li>`;
+                        });
+                        tasksList.style.display = 'block'; 
+                        console.log("Tasks displayed.");
+                    })
+                    .catch(error => {
+                        console.error('Fetch error:', error);
+                    });
+            } else {
+                tasksList.style.display = 'none'; 
+                console.log("Tasks hidden.");
+            }
+        });
+    });
+</script>
+
+{% endblock %}

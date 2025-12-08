@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="content">
+  <div class="task-header">
+    <h2>Úloha: {{ task.title }}</h2>
+    <h2>Študent: {{ user.username }}</h2>
+  </div>
+
+  <div class="rating-form">
+    <form method="post" action="">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">Pridať hodnotenie</button>
+    </form>
+  </div>
+
+  <div class="ratings">
+    <h2>Existujúce hodnotenia:</h3>
+    {% for rating in ratings %}
+    <div class="rating-item">
+      <p>Hodnotenie: {{ rating.rating }}</p>
+      <p>Feedback: {{ rating.feedback }}</p>
+      <p>Ohodnotené dňa: {{ rating.created_at|date:"d.m.Y H:i" }}</p>
+    </div>
+    {% empty %}
+    <p>Pre túto úlohu zatiaľ nie sú k dispozícii žiadne hodnotenia.</p>
+    {% endfor %}
+  </div>
+
+  {% if uploaded_files.exists or coderuns.exists %}
+    {% for uploaded_file in uploaded_files %}
+    <div class="uploaded-file-item">
+        <p>{{ forloop.counter }}. File:
+            <a href="{{ uploaded_file.file.url }}" class="uploaded-file-link" download="{{ uploaded_file.file.name }}">
+                {{ uploaded_file.file.name|cut:"uploads/" }}
+            </a>
+        </p>
+        <p class="uploaded-file-info">Uploaded at: {{ uploaded_file.uploaded_at }}</p>
+    </div>
+    {% endfor %}
+
+    {% for coderun in coderuns %}
+    <div class="code-run-item">
+        <button class="toggle-details-btn">Detaily zbehnutia #{{ forloop.counter }}</button>
+        <div class="code-run-details" style="display: none;">
+            <pre>{{ coderun.code }}</pre>
+            <p>Output:</p>
+            <pre>{{ coderun.output }}</pre>
+            <p>Tests Output:</p>
+            <pre>{{ coderun.tests_output }}</pre>
+            <p class="code-run-info">Created At: {{ coderun.created_at }}</p>
+        </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="homepage">
+    <p>Študent ešte neodovzdal žiadne súbory ani riešenia pre toto zadanie.</p>
+    </div>
+  {% endif %}
+</div>
+<script>
+    var buttons = document.querySelectorAll('.toggle-details-btn');
+    buttons.forEach(function(button) {
+        button.addEventListener('click', function() {
+            var details = button.nextElementSibling;
+            details.style.display = details.style.display === 'none' ? 'block' : 'none';
+        });
+    });
+</script>
+
+<script>
+  window.addEventListener('DOMContentLoaded', (event) => {
+    {% for message in messages %}
+    Swal.fire({
+      title: "{{ message.tags|title }}",
+      text: "{{ message }}",
+      icon: "{{ message.tags }}",
+      confirmButtonText: 'OK'
+    });
+    {% endfor %}
+  });
+</script>
+{% endblock %}
