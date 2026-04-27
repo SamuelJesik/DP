@@ -7,6 +7,7 @@
     <script>
         var readOnlyCode = `{{ task.input_code|escapejs }}`;
         var expectedOutput = `{{ task.expected_output|escapejs }}`;
+        var taskType = "{{ task.task_type }}";
     </script>
 
     <script type="text/javascript">
@@ -102,6 +103,106 @@
         }
         #send-btn:hover { background-color: #218838; }
         #send-btn:disabled { background-color: #ccc; cursor: not-allowed; }
+
+        .admin-tests-toggle { margin-bottom: 8px; }
+        .admin-toggle-btn {
+            padding: 5px 14px !important;
+            border-radius: 4px !important;
+            border: none !important;
+            font-size: 0.85em !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            transition: opacity 0.2s !important;
+        }
+        .admin-toggle-btn.visible {
+            background-color: #28a745 !important;
+            color: white !important;
+        }
+        .admin-toggle-btn.hidden {
+            background-color: #dc3545 !important;
+            color: white !important;
+        }
+        .admin-toggle-btn:hover { opacity: 0.85 !important; }
+        .tests-hidden-msg {
+            color: #888;
+            font-style: italic;
+            font-size: 0.9em;
+            padding: 8px 0;
+        }
+
+        #toggle-ratings {
+            padding: 7px 16px;
+            background-color: #17a2b8;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #toggle-ratings:hover { background-color: #117a8b; }
+
+        /* ── Test Writing result boxes ── */
+        #test-writing-results { margin-top: 20px; }
+        .tw-result-box {
+            padding: 14px 18px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 4px solid transparent;
+        }
+        .tw-result-box strong {
+            display: flex;
+            align-items: center;
+            font-size: 0.95rem;
+        }
+        .tw-result-box pre {
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-size: 0.82rem;
+            color: #555;
+            background: rgba(0,0,0,0.04);
+            border-radius: 5px;
+            padding: 10px;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+        .tw-warning {
+            background: rgba(245,158,11,0.08);
+            border-left-color: #f59e0b;
+        }
+        .tw-warning strong { color: #92400e; }
+        .tw-success {
+            background: rgba(34,197,94,0.08);
+            border-left-color: #22c55e;
+        }
+        .tw-success strong { color: #14532d; }
+        .tw-error {
+            background: rgba(239,68,68,0.08);
+            border-left-color: #ef4444;
+        }
+        .tw-error strong { color: #7f1d1d; }
+
+        #uploadBtn, #submitBtn {
+            padding: 7px 18px;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #uploadBtn {
+            background-color: #6c757d;
+            color: #fff;
+        }
+        #uploadBtn:hover { background-color: #565e64; }
+        #submitBtn {
+            background-color: #1976d2;
+            color: #fff;
+            margin-left: 6px;
+        }
+        #submitBtn:hover { background-color: #1256a0; }
     </style>
 {% endblock extra_head %}
 
@@ -119,19 +220,19 @@
 
     <div class="ai-chat-container">
         <div class="ai-header">
-            <h4>🤖 AI Mentor</h4>
-            <p>Pýtaj sa na rady, ale riešenie musíš nájsť sám!</p>
+            <h4><i data-lucide="bot" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>AI Mentor</h4>
+            <p>Ask for hints, but you have to find the solution yourself!</p>
         </div>
-        
+
         <div id="chat-window" class="chat-window">
             <div class="message ai-message">
-                <div class="bubble">Ahoj! Som tvoj virtuálny mentor. Kde si sa zasekol? 🤔</div>
+                <div class="bubble">Hi! I'm your virtual mentor. Where are you stuck?</div>
             </div>
         </div>
 
         <div class="chat-input-area">
-            <input type="text" id="user-input" placeholder="Napíš otázku... (napr. Prečo mi to padá?)" autocomplete="off">
-            <button id="send-btn">Odoslať 🚀</button>
+            <input type="text" id="user-input" placeholder="Ask a question... (e.g. Why is this not working?)" autocomplete="off">
+            <button id="send-btn"><i data-lucide="send" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Send</button>
         </div>
     </div>
     <button id="toggle-ratings" class="btn btn-info">Zobraziť hodnotenie</button>
@@ -150,23 +251,67 @@
     </div>
 
     <div class="editor-container">
-        <div class="editor-wrapper">
-            <h2 class="editor-header">Zadanie kódu:</h2>
+        <div class="editor-wrapper editor-wrapper--readonly">
+            {% if task.task_type == 'test_writing' %}
+                <h2 class="editor-header">Buggy Code (read-only)</h2>
+            {% else %}
+                <h2 class="editor-header">Original Code (read-only)</h2>
+            {% endif %}
             <div id="readonly-editor" class="ace-editor"></div>
         </div>
-        
-        <div class="editor-wrapper">
-            <h2 class="editor-header">Vaše riešenie:</h2>
+
+        <div class="editor-wrapper editor-wrapper--editable">
+            {% if task.task_type == 'test_writing' %}
+                <h2 class="editor-header">Your Tests</h2>
+            {% elif task.task_type == 'error_detection' %}
+                <h2 class="editor-header">Your Fix</h2>
+            {% elif task.task_type == 'code_extension' %}
+                <h2 class="editor-header">Your Extended Code</h2>
+            {% else %}
+                <h2 class="editor-header">Your Refactored Code</h2>
+            {% endif %}
             <div id="editor" class="ace-editor"></div>
             <button id="run-code" class="run-button">Run</button>
         </div>
+    </div>
 
-        <div class="editor-wrapper">
-            <h2 class="editor-header">Unit Testy:</h2>
+    {% if task.task_type != 'test_writing' %}
+    <div class="editor-wrapper editor-wrapper--tests">
+        {% if request.user.is_superuser %}
+        <div class="admin-tests-toggle">
+            <button id="admin-toggle-tests-btn"
+                    class="admin-toggle-btn {% if task.show_tests %}visible{% else %}hidden{% endif %}"
+                    data-task-id="{{ task.id }}"
+                    data-csrf="{{ csrf_token }}">
+                {% if task.show_tests %}<i data-lucide="eye" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Tests visible to students{% else %}<i data-lucide="eye-off" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Tests hidden from students{% endif %}
+            </button>
+        </div>
+        {% endif %}
+
+        {% if task.show_tests or request.user.is_superuser %}
+        <button class="tests-toggle-btn" id="toggle-tests-btn">Show Unit Tests ▼</button>
+        <div class="tests-panel" id="tests-panel">
             <div id="unit-tests-editor" class="ace-editor"></div>
-            <button id="show-results">Zobraziť Výsledky Testov</button>
+            <button id="show-results">Show Test Results</button>
+        </div>
+        {% else %}
+        <p class="tests-hidden-msg">Unit tests are hidden for this task.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if task.task_type == 'test_writing' %}
+    <div id="test-writing-results" style="display:none;">
+        <div id="buggy-result-box" class="tw-result-box">
+            <strong id="buggy-result-label"></strong>
+            <pre id="buggy-result-output"></pre>
+        </div>
+        <div id="solution-result-box" class="tw-result-box">
+            <strong id="solution-result-label"></strong>
+            <pre id="solution-result-output"></pre>
         </div>
     </div>
+    {% endif %}
 
     <div id="expandable-test-results" class="expandable-results" style="display: none;">
         <pre id="expanded-test-results-output"></pre>
@@ -201,9 +346,10 @@
     </div>
     {% endfor %}
 
+    <div id="coderuns-list">
     {% for coderun in coderuns %}
     <div class="code-run-item">
-        <button class="toggle-details-btn">Detaily zbehnutia #{{ forloop.counter }}</button>
+        <button class="toggle-details-btn">Detaily spustenia #{{ forloop.counter }}</button>
         <div class="code-run-details" style="display: none;">
             <pre>{{ coderun.code }}</pre>
             <p>Output:</p>
@@ -214,6 +360,7 @@
         </div>
     </div>
     {% endfor %}
+    </div>
 
 </div>
 
@@ -254,19 +401,22 @@
         const loadingDiv = document.createElement('div');
         loadingDiv.id = 'ai-loading';
         loadingDiv.className = 'message ai-message';
-        loadingDiv.innerHTML = '<div class="bubble" style="color:#888; font-style:italic;">✍️ Píšem odpoveď...</div>';
+        loadingDiv.innerHTML = '<div class="bubble" style="color:#888; font-style:italic;">Thinking...</div>';
         chatWindow.appendChild(loadingDiv);
         chatWindow.scrollTop = chatWindow.scrollHeight;
+
+        const studentCode = ace.edit("editor").getValue();
 
         fetch(`/myapp/api/chat-ai/${taskId}/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}' 
+                'X-CSRFToken': '{{ csrf_token }}'
             },
             body: JSON.stringify({
                 message: text,
-                history: chatHistory 
+                history: chatHistory,
+                student_code: studentCode
             })
         })
         .then(response => response.json())
@@ -283,7 +433,7 @@
             if(document.getElementById('ai-loading')) {
                 document.getElementById('ai-loading').remove();
             }
-            addMessage("❌ Chyba spojenia so serverom.", 'ai');
+            addMessage("Connection error.", 'ai');
             console.error(err);
         })
         .finally(() => {
@@ -316,6 +466,47 @@
     });
 
     document.addEventListener('DOMContentLoaded', function() {
+        var adminToggleBtn = document.getElementById('admin-toggle-tests-btn');
+        if (adminToggleBtn) {
+            adminToggleBtn.addEventListener('click', function() {
+                var taskId = this.dataset.taskId;
+                var csrf   = this.dataset.csrf;
+                fetch(`/myapp/tasks/${taskId}/toggle-tests/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/json' }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.show_tests) {
+                        adminToggleBtn.innerHTML = '<i data-lucide="eye" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Tests visible to students';
+                        adminToggleBtn.classList.remove('hidden');
+                        adminToggleBtn.classList.add('visible');
+                    } else {
+                        adminToggleBtn.innerHTML = '<i data-lucide="eye-off" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Tests hidden from students';
+                        adminToggleBtn.classList.remove('visible');
+                        adminToggleBtn.classList.add('hidden');
+                    }
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                })
+                .catch(() => alert('Failed to toggle test visibility.'));
+            });
+        }
+
+        var toggleTestsBtn = document.getElementById('toggle-tests-btn');
+        var testsPanel = document.getElementById('tests-panel');
+        if (toggleTestsBtn && testsPanel) {
+            toggleTestsBtn.addEventListener('click', function() {
+                var open = testsPanel.style.display === 'block';
+                testsPanel.style.display = open ? 'none' : 'block';
+                toggleTestsBtn.textContent = open ? 'Show Unit Tests ▼' : 'Hide Unit Tests ▲';
+                if (!open) {
+                    // Ace needs a resize signal when becoming visible
+                    var ed = ace.edit("unit-tests-editor");
+                    if (ed) ed.resize();
+                }
+            });
+        }
+
         var container = document.getElementById('ratings-container');
         if(container) {
              container.style.maxHeight = '0px';

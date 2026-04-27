@@ -7,44 +7,55 @@
 
 {% block content %}
 <div class="content">
-    <h2 class="tasks-title">Zoznam úloh na refaktorizáciu</h2>
+    <h2 class="tasks-title">Task Catalog</h2>
 
     <div class="controls-container">
-        
         <div class="sort-buttons">
-            <span class="sort-label">Zoradiť podľa:</span>
-            <a href="?sort=-id" class="btn-sort {% if current_sort == '-id' %}active{% endif %}">Najnovšie</a>
-            <a href="?sort=title" class="btn-sort {% if current_sort == 'title' %}active{% endif %}">Názov (A-Z)</a>
-            <a href="?sort=language" class="btn-sort {% if current_sort == 'language' %}active{% endif %}">Jazyk</a>
+            <span class="sort-label">Sort:</span>
+            <a href="?sort=-id"       class="btn-sort {% if current_sort == '-id' %}active{% endif %}">Newest</a>
+            <a href="?sort=title"     class="btn-sort {% if current_sort == 'title' %}active{% endif %}">A–Z</a>
+            <a href="?sort=language"  class="btn-sort {% if current_sort == 'language' %}active{% endif %}">Language</a>
+            <a href="?sort=task_type" class="btn-sort {% if current_sort == 'task_type' %}active{% endif %}">Type</a>
         </div>
 
-        
+        <div class="filter-buttons">
+            <span class="sort-label">Filter:</span>
+            <button class="btn-filter active" data-filter="all">All</button>
+            <button class="btn-filter" data-filter="refactoring">Refactoring</button>
+            <button class="btn-filter" data-filter="error_detection">Error Detection</button>
+            <button class="btn-filter" data-filter="test_writing">Test Writing</button>
+            <button class="btn-filter" data-filter="code_extension">Code Extension</button>
+        </div>
     </div>
 
-    <ul class="tasks-grid">
+    <ul class="tasks-grid" id="tasks-grid">
         {% for task in tasks %}
-            <li class="task-card">
+            <li class="task-card" data-type="{{ task.task_type }}">
                 <a href="{% url 'task_detail' task.id %}" class="task-link">
                     <div class="task-header">
                         <span class="task-name">{{ task.title }}</span>
-                        
-                        <div class="lang-icon-small">
-                            {% if task.language == 'python' %}
-                                <img src="{% static 'css/python.png' %}" alt="Python" title="Python">
-                            {% elif task.language == 'cpp' %}
-                                <img src="{% static 'css/c.png' %}" alt="C++" title="C++">
-                            {% elif task.language == 'java' %}
-                                <img src="{% static 'css/java.png' %}" alt="Java" title="Java">
-                            {% else %}
-                                <span class="unknown-lang">❓</span>
+                        <div class="task-header-icons">
+                            {% if task.id in submitted_task_ids %}
+                                <span class="submitted-badge" title="You have submitted code for this task">✓</span>
                             {% endif %}
+                            <div class="lang-icon-small">
+                                {% if task.language == 'python' %}
+                                    <img src="{% static 'css/python.png' %}" alt="Python" title="Python">
+                                {% elif task.language == 'cpp' %}
+                                    <img src="{% static 'css/c.png' %}" alt="C++" title="C++">
+                                {% elif task.language == 'java' %}
+                                    <img src="{% static 'css/java.png' %}" alt="Java" title="Java">
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                    
+
                     <p class="task-desc">{{ task.description|truncatewords:20 }}</p>
-                    
+
                     <div class="task-footer">
-                        <span class="task-id">#{{ task.id }}</span>
+                        <span class="task-type-badge type-{{ task.task_type }}">
+                            {{ task.get_task_type_display }}
+                        </span>
                         <span class="task-lang-tag {{ task.language }}">
                             {{ task.get_language_display }}
                         </span>
@@ -53,9 +64,38 @@
             </li>
         {% empty %}
             <li class="empty-message">
-                <p>Zatiaľ nie sú žiadne úlohy.</p>
+                <p>No tasks available yet.</p>
             </li>
         {% endfor %}
     </ul>
+
+    <p id="no-filter-results" style="display:none; text-align:center; color:#888; margin-top:20px;">
+        No tasks match this filter.
+    </p>
 </div>
+
+<script>
+function applyFilter(filter) {
+    document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+    const activeBtn = document.querySelector(`.btn-filter[data-filter="${filter}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    let visible = 0;
+    document.querySelectorAll('.task-card').forEach(card => {
+        const show = filter === 'all' || card.dataset.type === filter;
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+    document.getElementById('no-filter-results').style.display = visible === 0 ? 'block' : 'none';
+}
+
+document.querySelectorAll('.btn-filter').forEach(btn => {
+    btn.addEventListener('click', function() {
+        applyFilter(this.dataset.filter);
+    });
+});
+
+const urlFilter = new URLSearchParams(window.location.search).get('filter');
+if (urlFilter) applyFilter(urlFilter);
+</script>
 {% endblock %}

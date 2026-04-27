@@ -42,7 +42,7 @@
 
     {% for coderun in coderuns %}
     <div class="code-run-item">
-        <button class="toggle-details-btn">Detaily zbehnutia #{{ forloop.counter }}</button>
+        <button class="toggle-details-btn">Detaily spustenia #{{ forloop.counter }}</button>
         <div class="code-run-details" style="display: none;">
             <pre>{{ coderun.code }}</pre>
             <p>Output:</p>

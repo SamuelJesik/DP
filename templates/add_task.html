@@ -6,119 +6,366 @@
 {% endblock %}
 
 {% block content %}
-<h2 style="text-align: center; margin-top: 30px;">Pridať novú úlohu</h2>
+<h2 style="text-align:center; margin-top:30px;">Add New Task</h2>
 
 <div class="add_container">
-    
-    <div style="background-color: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #90caf9;">
-        <h3 style="margin-top: 0; color: #1565c0; font-size: 1.2rem;">🤖 AI Asistent (Ollama)</h3>
-        <p style="font-size: 0.9em; color: #555; margin-bottom: 10px;">
-            Nechce sa ti vymýšľať zadanie? Klikni a nechaj AI vygenerovať všetko za teba.
-        </p>
-        
-        <button type="button" id="ai-btn" style="background-color: #1976d2; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-            ✨ Vygenerovať zadanie cez AI
-        </button>
-        <span id="ai-status" style="margin-left: 15px; font-weight: bold; color: #333; font-size: 0.9em;"></span>
+
+  <!-- ── AI GENERATOR PANEL ──────────────────────────────────────────── -->
+  <div class="ai-panel">
+    <div class="ai-panel-header">
+      <span>AI Task Generator</span>
+      <span class="ai-panel-sub">Configure options, generate, preview, then fill the form.</span>
     </div>
-    <form method="post">
-        {% csrf_token %}
 
-        <label style="margin-top: 0;">Vyber programovací jazyk:</label>
-        <div class="language-selector">
-            
-            <label>
-                <input type="radio" name="language" value="python" class="lang-radio" checked>
-                <div class="lang-label">
-                    <img src="{% static 'css/python.png' %}" alt="Python" class="lang-icon">
-                    <span>Python</span>
-                </div>
-            </label>
+    <div class="ai-panel-body">
 
-            <label>
-                <input type="radio" name="language" value="cpp" class="lang-radio">
-                <div class="lang-label">
-                    <img src="{% static 'css/c.png' %}" alt="C++" class="lang-icon">
-                    <span>C++</span>
-                </div>
-            </label>
-
-            <label>
-                <input type="radio" name="language" value="java" class="lang-radio">
-                <div class="lang-label">
-                    <img src="{% static 'css/java.png' %}" alt="Java" class="lang-icon">
-                    <span>Java</span>
-                </div>
-            </label>
+      <!-- Task Type -->
+      <div class="ai-option-group">
+        <label class="ai-option-label">Task Type</label>
+        <div class="ai-type-selector">
+          <button type="button" class="ai-type-btn active" data-type="refactoring">Refactoring</button>
+          <button type="button" class="ai-type-btn" data-type="error_detection">Error Detection</button>
+          <button type="button" class="ai-type-btn" data-type="test_writing">Test Writing</button>
+          <button type="button" class="ai-type-btn" data-type="code_extension">Code Extension</button>
         </div>
-        <label for="id_title">Názov úlohy:</label>
-        <input type="text" id="id_title" name="title" placeholder="Napr. Refaktorizácia Bubble Sortu">
+      </div>
 
-        <label for="id_description">Popis zadania:</label>
-        <textarea id="id_description" name="description" placeholder="Vysvetli študentovi, čo je cieľom..." rows="4"></textarea>
+      <!-- Difficulty -->
+      <div class="ai-option-group">
+        <label class="ai-option-label">Difficulty</label>
+        <div class="ai-difficulty-selector">
+          <button type="button" class="ai-diff-btn" data-diff="easy">Easy</button>
+          <button type="button" class="ai-diff-btn active" data-diff="medium">Medium</button>
+          <button type="button" class="ai-diff-btn" data-diff="hard">Hard</button>
+        </div>
+      </div>
 
-        <label for="id_input_code">Vstupný kód (Broken Code):</label>
-        <textarea id="id_input_code" name="input_code" placeholder="Sem vlož kód, ktorý treba opraviť..." rows="10" style="font-family: monospace; background-color: #f8f9fa;"></textarea>
+      <!-- Topic -->
+      <div class="ai-option-group">
+        <label class="ai-option-label" for="ai-topic">Topic / Theme <span style="font-weight:normal; color:#888;">(optional)</span></label>
+        <input type="text" id="ai-topic" class="ai-topic-input"
+               placeholder="e.g. sorting algorithms, linked lists, string manipulation…">
+      </div>
 
-        <label for="id_expected_output">Unit testy (Python kód):</label>
-        <textarea id="id_expected_output" name="expected_output" placeholder="import unittest..." rows="6" style="font-family: monospace; background-color: #f8f9fa;"></textarea>
+      <!-- Generate button -->
+      <div class="ai-option-group ai-generate-row">
+        <button type="button" id="ai-generate-btn" class="ai-generate-btn">
+          Generate Task
+        </button>
+        <span id="ai-status" class="ai-status"></span>
+      </div>
 
-        <button type="submit" id="task_add_button">💾 Uložiť Úlohu</button>
-    </form>
-</div>
+    </div><!-- /ai-panel-body -->
+
+    <!-- ── PREVIEW ──────────────────────────────────────────────────── -->
+    <div class="ai-preview" id="ai-preview" style="display:none;">
+      <div class="ai-preview-header">
+        <i data-lucide="clipboard-list" style="width:15px;height:15px;vertical-align:middle;margin-right:6px;"></i>Preview
+        <div class="ai-preview-actions">
+          <button type="button" id="ai-accept-btn" class="ai-accept-btn">Fill Form</button>
+          <button type="button" id="ai-regen-btn" class="ai-regen-btn">Regenerate</button>
+        </div>
+      </div>
+
+      <div class="ai-preview-body">
+        <div class="preview-row">
+          <span class="preview-label">Title</span>
+          <span id="preview-title" class="preview-value"></span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">Description</span>
+          <span id="preview-description" class="preview-value preview-desc"></span>
+        </div>
+        <div class="preview-row">
+          <div class="preview-code-header">
+            <span class="preview-label" id="preview-code-label">Code</span>
+            <button type="button" class="regen-section-btn" id="regen-code-btn">↺ Regenerate code</button>
+          </div>
+          <pre id="preview-code" class="preview-code"></pre>
+        </div>
+        <div class="preview-row" id="preview-tests-row">
+          <div class="preview-code-header">
+            <span class="preview-label" id="preview-tests-label">Tests</span>
+            <button type="button" class="regen-section-btn" id="regen-tests-btn">↺ Regenerate tests</button>
+          </div>
+          <pre id="preview-tests" class="preview-code"></pre>
+        </div>
+        <div class="preview-row" id="preview-solution-row" style="display:none;">
+          <div class="preview-code-header">
+            <span class="preview-label">Solution Code</span>
+          </div>
+          <pre id="preview-solution" class="preview-code"></pre>
+        </div>
+      </div>
+    </div><!-- /ai-preview -->
+
+  </div><!-- /ai-panel -->
+
+  <!-- ── TASK FORM ───────────────────────────────────────────────────── -->
+  <form method="post" class="task-form">
+    {% csrf_token %}
+
+    <!-- Language -->
+    <div class="form-section-label">Language</div>
+    <div class="language-selector">
+      <label>
+        <input type="radio" name="language" value="python" class="lang-radio" checked>
+        <div class="lang-label">
+          <img src="{% static 'css/python.png' %}" alt="Python" class="lang-icon">
+          <span>Python</span>
+        </div>
+      </label>
+      <label>
+        <input type="radio" name="language" value="cpp" class="lang-radio">
+        <div class="lang-label">
+          <img src="{% static 'css/c.png' %}" alt="C++" class="lang-icon">
+          <span>C++</span>
+        </div>
+      </label>
+      <label>
+        <input type="radio" name="language" value="java" class="lang-radio">
+        <div class="lang-label">
+          <img src="{% static 'css/java.png' %}" alt="Java" class="lang-icon">
+          <span>Java</span>
+        </div>
+      </label>
+    </div>
+
+    <!-- Task Type (synced from AI panel, or set manually) -->
+    <div class="form-section-label">Task Type</div>
+    <div class="form-type-selector">
+      <label class="form-type-option">
+        <input type="radio" name="task_type" value="refactoring" checked>
+        <span>Refactoring</span>
+      </label>
+      <label class="form-type-option">
+        <input type="radio" name="task_type" value="error_detection">
+        <span>Error Detection</span>
+      </label>
+      <label class="form-type-option">
+        <input type="radio" name="task_type" value="test_writing">
+        <span>Test Writing</span>
+      </label>
+      <label class="form-type-option">
+        <input type="radio" name="task_type" value="code_extension">
+        <span>Code Extension</span>
+      </label>
+    </div>
+
+    <label for="id_title">Title</label>
+    <input type="text" id="id_title" name="title" placeholder="e.g. Fix the Factorial">
+
+    <label for="id_description">Description</label>
+    <textarea id="id_description" name="description"
+              placeholder="Describe what the student needs to do…" rows="4"></textarea>
+
+    <div class="field-with-regen">
+      <label for="id_input_code" id="input-code-label">Input Code</label>
+      <button type="button" class="field-regen-btn" id="form-regen-code-btn" title="Regenerate code only">↺</button>
+    </div>
+    <textarea id="id_input_code" name="input_code"
+              placeholder="Paste the code here…" rows="10"
+              style="font-family:monospace; background:#f8f9fa;"></textarea>
+
+    <!-- Tests — hidden for test_writing -->
+    <div id="tests-field-group">
+      <div class="field-with-regen">
+        <label for="id_expected_output">Unit Tests</label>
+        <button type="button" class="field-regen-btn" id="form-regen-tests-btn" title="Regenerate tests only">↺</button>
+      </div>
+      <textarea id="id_expected_output" name="expected_output"
+                placeholder="import unittest…" rows="6"
+                style="font-family:monospace; background:#f8f9fa;"></textarea>
+    </div>
+
+    <!-- Solution Code — shown only for test_writing -->
+    <div id="solution-field-group" style="display:none;">
+      <label for="id_solution_code">Solution Code <span style="font-weight:normal; color:#888;">(correct version — used to validate student tests)</span></label>
+      <textarea id="id_solution_code" name="solution_code"
+                placeholder="Paste the correct solution here…" rows="10"
+                style="font-family:monospace; background:#f8f9fa;"></textarea>
+    </div>
+
+    <div style="margin: 12px 0;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:normal;">
+        <input type="checkbox" name="show_tests" id="id_show_tests" checked style="width:16px; height:16px;">
+        <span>Show unit tests to students</span>
+      </label>
+      <small style="color:#888; margin-left:24px;">Uncheck to hide the tests panel on the task page.</small>
+    </div>
+
+    <button type="submit" id="task_add_button">Save Task</button>
+  </form>
+
+</div><!-- /add_container -->
 
 <script>
-    document.getElementById('ai-btn').addEventListener('click', function() {
-        const btn = this;
-        const status = document.getElementById('ai-status');
-        
-        const selectedLang = document.querySelector('input[name="language"]:checked').value;
-        
-        btn.disabled = true;
-        btn.style.opacity = "0.7";
-        btn.innerText = "Generujem...";
-        status.innerText = `⏳ Generujem zadanie pre ${selectedLang.toUpperCase()}...`;
-        status.style.color = "#1565c0";
+// ── State ──────────────────────────────────────────────────────────────────
+var lastGenerated = null;
 
-        fetch(`/myapp/api/generate-task/?lang=${selectedLang}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    status.innerText = "❌ Chyba: " + data.error;
-                    status.style.color = "red";
-                } else {
-                    document.getElementById('id_title').value = data.title || "";
-                    document.getElementById('id_description').value = data.description || "";
-                    document.getElementById('id_input_code').value = data.input_code || "";
-                    document.getElementById('id_expected_output').value = data.expected_output || "";
-                    
-                    status.innerText = "✅ Hotovo!";
-                    status.style.color = "green";
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                status.innerText = "❌ Chyba siete.";
-                status.style.color = "red";
-            })
-            .finally(() => {
-                btn.disabled = false;
-                btn.style.opacity = "1";
-                btn.innerText = "✨ Vygenerovať zadanie cez AI";
-            });
-    });
-</script>
+function getAIType()       { return document.querySelector('.ai-type-btn.active').dataset.type; }
+function getAIDifficulty() { return document.querySelector('.ai-diff-btn.active').dataset.diff; }
+function getAITopic()      { return document.getElementById('ai-topic').value.trim(); }
+function getFormLang()     { return document.querySelector('input[name="language"]:checked').value; }
 
-<script>
-    window.addEventListener('DOMContentLoaded', (event) => {
-      {% for message in messages %}
-      Swal.fire({
-        title: "{{ message.tags|title }}",
-        text: "{{ message }}",
-        icon: "{{ message.tags }}",
-        confirmButtonText: 'OK'
-      });
-      {% endfor %}
-    });
+// ── AI Type buttons ────────────────────────────────────────────────────────
+document.querySelectorAll('.ai-type-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.ai-type-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// ── Difficulty buttons ─────────────────────────────────────────────────────
+document.querySelectorAll('.ai-diff-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.ai-diff-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// ── Form task_type radios → show/hide solution/tests fields ───────────────
+function syncFormTypeUI() {
+  var type = document.querySelector('input[name="task_type"]:checked').value;
+  document.getElementById('tests-field-group').style.display    = type === 'test_writing' ? 'none' : '';
+  document.getElementById('solution-field-group').style.display = type === 'test_writing' ? '' : 'none';
+  document.getElementById('input-code-label').textContent =
+    type === 'test_writing' ? 'Buggy Code' :
+    type === 'error_detection' ? 'Code (with bugs)' : 'Input Code';
+}
+document.querySelectorAll('input[name="task_type"]').forEach(r =>
+  r.addEventListener('change', syncFormTypeUI)
+);
+
+// ── Core generate function ─────────────────────────────────────────────────
+function generateTask(onlySection) {
+  const type   = getAIType();
+  const diff   = getAIDifficulty();
+  const topic  = getAITopic();
+  const lang   = getFormLang();
+  const btn    = document.getElementById('ai-generate-btn');
+  const status = document.getElementById('ai-status');
+
+  btn.disabled = true;
+  status.className = 'ai-status ai-status-loading';
+  status.textContent = 'Generating…';
+
+  const url = `/myapp/api/generate-task/?lang=${lang}&task_type=${type}&difficulty=${diff}&topic=${encodeURIComponent(topic)}`;
+
+  fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        status.className = 'ai-status ai-status-error';
+        status.textContent = 'Error: ' + data.error;
+        return;
+      }
+
+      if (onlySection === 'code') {
+        // Only update the code part of an existing preview
+        lastGenerated.input_code = data.input_code;
+        document.getElementById('preview-code').textContent = data.input_code || '';
+      } else if (onlySection === 'tests') {
+        lastGenerated.expected_output = data.expected_output || '';
+        lastGenerated.solution_code   = data.solution_code   || '';
+        document.getElementById('preview-tests').textContent    = data.expected_output || '';
+        document.getElementById('preview-solution').textContent = data.solution_code   || '';
+      } else {
+        // Full generation — show preview
+        lastGenerated = data;
+        showPreview(data);
+      }
+
+      status.className = 'ai-status ai-status-ok';
+      status.textContent = 'Done!';
+    })
+    .catch(() => {
+      status.className = 'ai-status ai-status-error';
+      status.textContent = 'Network error.';
+    })
+    .finally(() => { btn.disabled = false; });
+}
+
+// ── Show preview panel ─────────────────────────────────────────────────────
+function showPreview(data) {
+  document.getElementById('preview-title').textContent       = data.title       || '';
+  document.getElementById('preview-description').textContent = data.description || '';
+  document.getElementById('preview-code').textContent        = data.input_code  || '';
+
+  var isTestWriting = data.task_type === 'test_writing';
+  document.getElementById('preview-tests-row').style.display    = isTestWriting ? 'none' : '';
+  document.getElementById('preview-solution-row').style.display = isTestWriting ? '' : 'none';
+  document.getElementById('preview-code-label').textContent     =
+    isTestWriting ? 'Buggy Code' :
+    data.task_type === 'error_detection' ? 'Code (with bugs)' : 'Code';
+  document.getElementById('preview-tests-label').textContent    = 'Tests';
+  document.getElementById('regen-tests-btn').style.display      = isTestWriting ? 'none' : '';
+
+  document.getElementById('preview-tests').textContent    = data.expected_output || '';
+  document.getElementById('preview-solution').textContent = data.solution_code   || '';
+
+  document.getElementById('ai-preview').style.display = 'block';
+}
+
+// ── Fill form from preview ─────────────────────────────────────────────────
+function fillForm(data) {
+  console.log('fillForm data:', data);
+
+  // Use preview element text as fallback in case the field is empty in data
+  var title = (data.title || document.getElementById('preview-title').textContent || '').trim();
+
+  document.getElementById('id_title').value           = title;
+  document.getElementById('id_description').value     = (data.description     || '').trim();
+  document.getElementById('id_input_code').value      = data.input_code       || '';
+  document.getElementById('id_expected_output').value = data.expected_output  || '';
+  document.getElementById('id_solution_code').value   = data.solution_code    || '';
+
+  // Sync task_type radio
+  var typeRadio = document.querySelector(`input[name="task_type"][value="${data.task_type}"]`);
+  if (typeRadio) { typeRadio.checked = true; syncFormTypeUI(); }
+
+  // Sync language radio if task_type is test_writing → force python
+  if (data.task_type === 'test_writing') {
+    document.querySelector('input[name="language"][value="python"]').checked = true;
+  }
+
+  // Scroll to form
+  document.querySelector('.task-form').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── Button wiring ──────────────────────────────────────────────────────────
+document.getElementById('ai-generate-btn').addEventListener('click', () => generateTask(null));
+document.getElementById('ai-regen-btn').addEventListener('click',    () => generateTask(null));
+document.getElementById('ai-accept-btn').addEventListener('click',   () => { if (lastGenerated) fillForm(lastGenerated); });
+
+document.getElementById('regen-code-btn').addEventListener('click',  () => generateTask('code'));
+document.getElementById('regen-tests-btn').addEventListener('click', () => generateTask('tests'));
+
+// Form ↺ buttons — regenerate and immediately fill that field
+document.getElementById('form-regen-code-btn').addEventListener('click', function() {
+  if (!lastGenerated) { alert('Generate a task first using the AI panel above.'); return; }
+  generateTask('code');
+  setTimeout(() => { document.getElementById('id_input_code').value = lastGenerated.input_code || ''; }, 3500);
+});
+document.getElementById('form-regen-tests-btn').addEventListener('click', function() {
+  if (!lastGenerated) { alert('Generate a task first using the AI panel above.'); return; }
+  generateTask('tests');
+  setTimeout(() => {
+    document.getElementById('id_expected_output').value = lastGenerated.expected_output || '';
+    document.getElementById('id_solution_code').value   = lastGenerated.solution_code   || '';
+  }, 3500);
+});
+
+// ── Django messages ────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  {% for message in messages %}
+  Swal.fire({
+    title: "{{ message.tags|title }}",
+    text: "{{ message }}",
+    icon: "{{ message.tags }}",
+    confirmButtonText: 'OK'
+  });
+  {% endfor %}
+});
 </script>
 {% endblock %}

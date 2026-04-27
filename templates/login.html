@@ -1,25 +1,333 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Prihlásenie</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In — CodeLab</title>
     {% load static %}
-<link rel="stylesheet" href="{% static 'css/styles.css' %}" />
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+
+        /* ── Left panel ── */
+        .left-panel {
+            width: 420px;
+            flex-shrink: 0;
+            background: #1a2540;
+            display: flex;
+            flex-direction: column;
+            padding: 48px 40px;
+            border-right: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 56px;
+            color: #fff;
+            font-weight: 800;
+            font-size: 1.2rem;
+            letter-spacing: -0.01em;
+        }
+        .brand-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #1976d2, #42a5f5);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+
+        .login-heading {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+        }
+        .login-sub {
+            color: rgba(255,255,255,0.45);
+            font-size: 0.9rem;
+            margin-bottom: 36px;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 7px;
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-group input:focus {
+            border-color: #42a5f5;
+            box-shadow: 0 0 0 3px rgba(66,165,245,0.15);
+        }
+        /* Django auto-generated p tags */
+        .login-form p { margin-bottom: 18px; }
+        .login-form p label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .login-form p input[type="text"],
+        .login-form p input[type="password"] {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 7px;
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .login-form p input:focus {
+            border-color: #42a5f5;
+            box-shadow: 0 0 0 3px rgba(66,165,245,0.15);
+        }
+
+        .btn-signin {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #1976d2, #42a5f5);
+            color: #fff;
+            border: none;
+            border-radius: 7px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: opacity 0.2s;
+            letter-spacing: 0.01em;
+        }
+        .btn-signin:hover { opacity: 0.9; }
+
+        .login-footer {
+            margin-top: 24px;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.4);
+            text-align: center;
+        }
+        .login-footer a {
+            color: #42a5f5;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .login-footer a:hover { text-decoration: underline; }
+
+        .error-list {
+            background: rgba(239,68,68,0.12);
+            border: 1px solid rgba(239,68,68,0.3);
+            border-radius: 7px;
+            padding: 10px 14px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+            color: #f87171;
+            list-style: none;
+        }
+        .error-list li::before { content: "⚠ "; }
+
+        /* ── Right panel ── */
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+            background: radial-gradient(ellipse at 60% 40%, #1e3a5f 0%, #0f172a 70%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .right-panel::before {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(25,118,210,0.12), transparent 70%);
+            top: -100px;
+            right: -100px;
+            pointer-events: none;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            max-width: 480px;
+            width: 100%;
+            margin-bottom: 40px;
+        }
+        .feature-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 20px;
+            transition: border-color 0.2s;
+        }
+        .feature-card:hover { border-color: rgba(66,165,245,0.3); }
+        .feature-card-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+        .feature-card-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+        .feature-card-desc {
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.45);
+            line-height: 1.45;
+        }
+
+        .right-tagline {
+            text-align: center;
+            max-width: 380px;
+        }
+        .right-tagline h2 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 10px;
+            letter-spacing: -0.02em;
+        }
+        .right-tagline p {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.45);
+            line-height: 1.6;
+        }
+
+        footer {
+            position: fixed;
+            bottom: 12px;
+            right: 24px;
+            font-size: 0.72rem;
+            color: rgba(255,255,255,0.2);
+        }
+    </style>
 </head>
-{% if not request.user.is_authenticated %}
-{% endif %}
-    <div class="login-container">
-        <h1>Vitajte</h1>
-        <form class ="login-form" method="post" action="{% url 'login' %}">
+<body>
+
+    <!-- Left: login form -->
+    <div class="left-panel">
+        <div class="brand">
+            <div class="brand-icon">
+                <i data-lucide="code-2" style="width:18px;height:18px;"></i>
+            </div>
+            CodeLab
+        </div>
+
+        <h1 class="login-heading">Welcome back</h1>
+        <p class="login-sub">Sign in to continue to your coding exercises.</p>
+
+        {% if form.errors %}
+        <ul class="error-list">
+            {% for field in form %}
+                {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+
+        <form class="login-form" method="post" action="{% url 'login' %}">
             {% csrf_token %}
             {{ form.as_p }}
-            <button type="submit">Prihlásiť sa</button>
-            <p>Nemáte účet? <a href="{% url 'register' %}">Zaregistrujte sa</a>.</p>
-
+            <button type="submit" class="btn-signin">
+                Sign In
+            </button>
         </form>
+
+        <p class="login-footer">
+            No account? <a href="{% url 'register' %}">Create one</a>
+        </p>
     </div>
-<footer>
-    <p>Aplikáciu pôvodne vytvoril a navrhol Bc. Samuel Ješík v 2026 ako diplomovú prácu na škole Univerzita Komenského v
-        Bratislave, Fakulta matematiky, fyziky a informatiky.</p>
-</footer>
+
+    <!-- Right: feature showcase -->
+    <div class="right-panel">
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-card-icon" style="background: rgba(26,86,219,0.2); color: #60a5fa;">
+                    <i data-lucide="code-2" style="width:18px;height:18px;"></i>
+                </div>
+                <div class="feature-card-title">Refactoring</div>
+                <div class="feature-card-desc">Clean up messy code without breaking behaviour.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-icon" style="background: rgba(200,30,30,0.2); color: #f87171;">
+                    <i data-lucide="bug" style="width:18px;height:18px;"></i>
+                </div>
+                <div class="feature-card-title">Error Detection</div>
+                <div class="feature-card-desc">Hunt down and fix bugs in broken code.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-icon" style="background: rgba(5,122,85,0.2); color: #34d399;">
+                    <i data-lucide="flask-conical" style="width:18px;height:18px;"></i>
+                </div>
+                <div class="feature-card-title">Test Writing</div>
+                <div class="feature-card-desc">Write unit tests that catch real bugs.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-icon" style="background: rgba(126,58,242,0.2); color: #a78bfa;">
+                    <i data-lucide="puzzle" style="width:18px;height:18px;"></i>
+                </div>
+                <div class="feature-card-title">Code Extension</div>
+                <div class="feature-card-desc">Add features to an existing codebase.</div>
+            </div>
+        </div>
+
+        <div class="right-tagline">
+            <h2>Learn by doing.</h2>
+            <p>Hands-on coding exercises designed to build real software engineering skills.</p>
+        </div>
+    </div>
+
+    <footer>CodeLab Bc. Samuel Ješík &mdash; FMFI UK &copy; 2026</footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+    </script>
 </body>
 </html>

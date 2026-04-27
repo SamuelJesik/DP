@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Survey — AI Assistants in Education</title>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 40px 16px 80px;
+    }
+    .page-wrap { max-width: 800px; margin: 0 auto; }
+
+    /* ── Header ── */
+    .survey-header { text-align: center; margin-bottom: 40px; }
+    .survey-header .brand {
+      display: inline-flex; align-items: center; gap: 8px;
+      color: #90caf9; font-size: 0.9rem; font-weight: 600;
+      letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 16px;
+    }
+    .survey-header h1 { font-size: 1.9rem; font-weight: 700; color: #f1f5f9; line-height: 1.25; margin-bottom: 12px; }
+    .survey-header p { color: #94a3b8; font-size: 0.95rem; line-height: 1.6; max-width: 600px; margin: 0 auto; }
+    .survey-header .badge {
+      display: inline-block; background: rgba(144,202,249,0.12); color: #90caf9;
+      border: 1px solid rgba(144,202,249,0.25); border-radius: 20px;
+      font-size: 0.78rem; padding: 3px 12px; margin-top: 12px;
+    }
+
+    /* ── Progress ── */
+    .progress-label { text-align: right; font-size: 0.78rem; color: #64748b; margin-bottom: 8px; }
+    .progress-bar-wrap { background: #1e293b; border-radius: 99px; height: 6px; margin-bottom: 32px; overflow: hidden; }
+    .progress-bar-fill {
+      height: 100%; background: linear-gradient(90deg, #3b82f6, #818cf8);
+      border-radius: 99px; transition: width 0.4s ease; width: 0%;
+    }
+
+    /* ── Section cards ── */
+    .section-card {
+      background: #1a2540; border: 1px solid #2d3e5e;
+      border-radius: 14px; padding: 28px 32px; margin-bottom: 20px;
+    }
+    .section-title {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 1rem; font-weight: 700; color: #90caf9;
+      margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #2d3e5e;
+    }
+    .section-number {
+      background: rgba(144,202,249,0.15); color: #90caf9; border-radius: 50%;
+      width: 24px; height: 24px; display: inline-flex; align-items: center;
+      justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;
+    }
+
+    /* ── Questions ── */
+    .question { margin-bottom: 24px; }
+    .question:last-child { margin-bottom: 0; }
+    label.q-label { display: block; font-size: 0.92rem; font-weight: 600; color: #cbd5e1; margin-bottom: 10px; }
+    label.q-label .required { color: #f87171; margin-left: 3px; }
+    .q-hint { font-size: 0.8rem; color: #64748b; font-weight: 400; display: block; margin-top: 2px; }
+
+    /* ── Native inputs ── */
+    select, input[type="text"], textarea {
+      width: 100%; background: #0f172a; border: 1px solid #334155;
+      border-radius: 8px; color: #e2e8f0; padding: 10px 14px;
+      font-size: 0.9rem; transition: border-color 0.2s; outline: none; font-family: inherit;
+    }
+    select:focus, input[type="text"]:focus, textarea:focus {
+      border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+    textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+    select option { background: #1a2540; }
+
+    /* ── Custom radio / checkbox grid ── */
+    .check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+    .check-grid-2col { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+    .check-item {
+      display: flex; align-items: center; gap: 10px;
+      background: #0f172a; border: 1px solid #334155; border-radius: 8px;
+      padding: 9px 13px; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      font-size: 0.88rem; color: #cbd5e1; user-select: none;
+    }
+    .check-item:hover { border-color: #3b82f6; background: rgba(59,130,246,0.06); }
+    .check-item.selected { border-color: #3b82f6; background: rgba(59,130,246,0.12); color: #e2e8f0; }
+    .check-box {
+      width: 16px; height: 16px; border: 2px solid #475569; border-radius: 4px;
+      flex-shrink: 0; transition: border-color 0.2s, background 0.2s;
+    }
+    .check-item.selected .check-box { background: #3b82f6; border-color: #3b82f6; }
+    .radio-box {
+      width: 16px; height: 16px; border: 2px solid #475569; border-radius: 50%;
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.2s; position: relative;
+    }
+    .radio-box::after {
+      content: ''; width: 7px; height: 7px; border-radius: 50%;
+      background: #3b82f6; opacity: 0; transition: opacity 0.2s;
+      position: absolute;
+    }
+    .check-item.selected .radio-box { border-color: #3b82f6; }
+    .check-item.selected .radio-box::after { opacity: 1; }
+
+    /* ── Per-tool rating cards ── */
+    .tool-rating-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+    .tool-card {
+      background: #0f172a; border: 1px solid #334155;
+      border-radius: 10px; padding: 14px 16px;
+      transition: border-color 0.2s;
+    }
+    .tool-card.not-used { opacity: 0.5; }
+    .tool-card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #1e293b;
+    }
+    .tool-card-name { font-weight: 700; font-size: 0.9rem; color: #f1f5f9; }
+    .not-used-toggle {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.75rem; color: #64748b; cursor: pointer; user-select: none;
+    }
+    .not-used-toggle input { display: none; }
+    .toggle-pill {
+      width: 32px; height: 17px; background: #334155; border-radius: 99px;
+      position: relative; transition: background 0.2s; flex-shrink: 0;
+    }
+    .toggle-pill::after {
+      content: ''; position: absolute; left: 2px; top: 2px;
+      width: 13px; height: 13px; background: #64748b; border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .not-used-toggle.active .toggle-pill { background: rgba(59,130,246,0.3); }
+    .not-used-toggle.active .toggle-pill::after { transform: translateX(15px); background: #3b82f6; }
+
+    .dim-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 8px; flex-wrap: wrap;
+    }
+    .dim-row:last-child { margin-bottom: 0; }
+    .dim-label { font-size: 0.78rem; color: #94a3b8; width: 130px; flex-shrink: 0; }
+    .star-row { display: flex; gap: 5px; }
+    .star-btn {
+      width: 28px; height: 28px; border: 1.5px solid #334155; border-radius: 6px;
+      background: #1a2540; color: #64748b; font-size: 0.75rem; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+    .star-btn:hover { border-color: #3b82f6; color: #90caf9; }
+    .star-btn.active { border-color: #3b82f6; background: rgba(59,130,246,0.2); color: #90caf9; }
+    .tool-card.not-used .star-btn { pointer-events: none; }
+    .tool-card.not-used .dim-label { color: #475569; }
+
+    /* ── Likert agreement table ── */
+    .agree-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .agree-table th {
+      color: #64748b; font-weight: 600; padding: 6px 8px;
+      text-align: center; font-size: 0.75rem;
+    }
+    .agree-table th:first-child { text-align: left; min-width: 200px; }
+    .agree-table td {
+      padding: 10px 8px; text-align: center;
+      border-top: 1px solid #1e293b; color: #cbd5e1;
+    }
+    .agree-table td:first-child { text-align: left; padding-left: 0; font-size: 0.85rem; }
+    .agree-table tr:hover td { background: rgba(59,130,246,0.04); }
+    .likert-radio {
+      appearance: none; width: 18px; height: 18px;
+      border: 2px solid #475569; border-radius: 50%; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .likert-radio:checked {
+      border-color: #3b82f6; background: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+    }
+
+    /* ── NPS scale ── */
+    .nps-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .nps-btn {
+      width: 40px; height: 40px; border: 1.5px solid #334155;
+      border-radius: 8px; background: #0f172a; color: #94a3b8;
+      font-size: 0.85rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+    .nps-btn:hover { border-color: #3b82f6; color: #90caf9; }
+    .nps-btn.active { border-color: #3b82f6; background: rgba(59,130,246,0.2); color: #90caf9; }
+    .nps-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: #475569; margin-top: 6px; }
+
+    /* ── Submit ── */
+    .submit-area { text-align: center; margin-top: 32px; }
+    .btn-submit {
+      background: linear-gradient(135deg, #2563eb, #4f46e5); color: #fff;
+      border: none; border-radius: 10px; padding: 14px 48px;
+      font-size: 1rem; font-weight: 700; cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s; letter-spacing: 0.02em;
+    }
+    .btn-submit:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .submit-note { color: #475569; font-size: 0.8rem; margin-top: 12px; }
+
+    /* ── Success ── */
+    #success-msg {
+      display: none; background: #1a2540; border: 1px solid #22c55e;
+      border-radius: 14px; padding: 40px 32px; text-align: center; margin-top: 20px;
+    }
+    #success-msg .success-icon { color: #22c55e; margin-bottom: 16px; }
+    #success-msg h2 { color: #f1f5f9; font-size: 1.4rem; margin-bottom: 8px; }
+    #success-msg p { color: #94a3b8; font-size: 0.9rem; }
+
+    /* ── Validation ── */
+    .field-error { color: #f87171; font-size: 0.8rem; margin-top: 5px; display: none; }
+    .question.has-error label.q-label { color: #f87171; }
+    .question.has-error select,
+    .question.has-error input[type="text"],
+    .question.has-error textarea { border-color: #f87171; }
+
+    @media (max-width: 560px) {
+      .section-card { padding: 20px 16px; }
+      .check-grid { grid-template-columns: 1fr; }
+      .tool-rating-grid { grid-template-columns: 1fr; }
+      .survey-header h1 { font-size: 1.4rem; }
+      .agree-table th, .agree-table td { padding: 6px 4px; font-size: 0.75rem; }
+      .agree-table th:first-child { min-width: 120px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- ══ HEADER ══ -->
+  <div class="survey-header">
+    <div class="brand">
+      <i data-lucide="graduation-cap" style="width:16px;height:16px;"></i>
+      Bachelor's Thesis — FMFI UK
+    </div>
+    <h1>AI Assistants in Programming Education</h1>
+    <p>
+      This survey maps how students at the faculty use AI tools — which ones they use,
+      how they compare, and how they affect learning. Results are used solely for academic research.
+    </p>
+    <span class="badge">Anonymous &middot; approx. 7 minutes</span>
+  </div>
+
+  <!-- ══ PROGRESS ══ -->
+  <div class="progress-label" id="progress-label">0 / 8 sections</div>
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-bar"></div></div>
+
+  <form id="survey-form" novalidate>
+
+    <!-- ══ SECTION 1: About You ══ -->
+    <div class="section-card" data-section="1">
+      <div class="section-title">
+        <span class="section-number">1</span>
+        <i data-lucide="user" style="width:16px;height:16px;"></i>
+        About You
+      </div>
+
+      <div class="question" id="q-year">
+        <label class="q-label" for="year">Year of study <span class="required">*</span></label>
+        <select id="year" name="year_of_study" required>
+          <option value="">— select year —</option>
+          <option>1st year — Bachelor's</option>
+          <option>2nd year — Bachelor's</option>
+          <option>3rd year — Bachelor's</option>
+          <option>1st year — Master's</option>
+          <option>2nd year — Master's</option>
+          <option>PhD</option>
+        </select>
+        <div class="field-error" id="err-year">Please select your year of study.</div>
+      </div>
+
+      <div class="question" id="q-programme">
+        <label class="q-label" for="programme">Study programme <span class="required">*</span></label>
+        <select id="programme" name="study_programme" required>
+          <option value="">— select programme —</option>
+          <option>Computer Science</option>
+          <option>Applied Informatics</option>
+          <option>Bioinformatics</option>
+          <option>Mathematics</option>
+          <option>Physics</option>
+          <option>Other</option>
+        </select>
+        <div class="field-error" id="err-programme">Please select your programme.</div>
+      </div>
+
+      <div class="question" id="q-experience">
+        <label class="q-label">How would you rate your programming experience? <span class="required">*</span></label>
+        <div class="check-grid" data-type="radio" data-name="programming_experience">
+          <div class="check-item" data-value="Beginner"><div class="radio-box"></div><span>Beginner — still learning the basics</span></div>
+          <div class="check-item" data-value="Intermediate"><div class="radio-box"></div><span>Intermediate — comfortable with most tasks</span></div>
+          <div class="check-item" data-value="Advanced"><div class="radio-box"></div><span>Advanced — work on complex projects</span></div>
+        </div>
+        <input type="hidden" name="programming_experience" id="val-programming_experience" />
+        <div class="field-error" id="err-experience">Please select one option.</div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 2: AI Tool Adoption ══ -->
+    <div class="section-card" data-section="2">
+      <div class="section-title">
+        <span class="section-number">2</span>
+        <i data-lucide="bot" style="width:16px;height:16px;"></i>
+        AI Tool Adoption
+      </div>
+
+      <div class="question" id="q-uses-ai">
+        <label class="q-label">Do you use AI tools in your studies? <span class="required">*</span></label>
+        <div class="check-grid" data-type="radio" data-name="uses_ai">
+          <div class="check-item" data-value="Yes, regularly"><div class="radio-box"></div><span>Yes, regularly</span></div>
+          <div class="check-item" data-value="Yes, occasionally"><div class="radio-box"></div><span>Yes, occasionally</span></div>
+          <div class="check-item" data-value="Tried but stopped"><div class="radio-box"></div><span>Tried, but stopped using them</span></div>
+          <div class="check-item" data-value="No"><div class="radio-box"></div><span>No, I don't use them</span></div>
+        </div>
+        <input type="hidden" name="uses_ai" id="val-uses_ai" />
+        <div class="field-error" id="err-uses-ai">Please select one option.</div>
+      </div>
+
+      <div class="question">
+        <label class="q-label">Which AI tools have you used?
+          <span class="q-hint">Select all that apply.</span>
+        </label>
+        <div class="check-grid" data-type="checkbox" data-name="tools_used">
+          <div class="check-item" data-value="ChatGPT"><div class="check-box"></div><span>ChatGPT</span></div>
+          <div class="check-item" data-value="GitHub Copilot"><div class="check-box"></div><span>GitHub Copilot</span></div>
+          <div class="check-item" data-value="Claude"><div class="check-box"></div><span>Claude (Anthropic)</span></div>
+          <div class="check-item" data-value="Gemini"><div class="check-box"></div><span>Gemini (Google)</span></div>
+          <div class="check-item" data-value="Cursor IDE"><div class="check-box"></div><span>Cursor IDE</span></div>
+          <div class="check-item" data-value="Codeium / Windsurf"><div class="check-box"></div><span>Codeium / Windsurf</span></div>
+          <div class="check-item" data-value="Perplexity AI"><div class="check-box"></div><span>Perplexity AI</span></div>
+          <div class="check-item" data-value="Other"><div class="check-box"></div><span>Other</span></div>
+        </div>
+        <input type="hidden" name="tools_used" id="val-tools_used" />
+      </div>
+
+      <div class="question">
+        <label class="q-label" for="tools-other">Other tools (please name them)</label>
+        <input type="text" id="tools-other" name="tools_other" placeholder="e.g. Mistral, DeepSeek, Llama..." />
+      </div>
+
+      <div class="question" id="q-duration">
+        <label class="q-label">How long have you been using AI tools for studying? <span class="required">*</span></label>
+        <div class="check-grid" data-type="radio" data-name="usage_duration">
+          <div class="check-item" data-value="Less than 3 months"><div class="radio-box"></div><span>Less than 3 months</span></div>
+          <div class="check-item" data-value="3–12 months"><div class="radio-box"></div><span>3–12 months</span></div>
+          <div class="check-item" data-value="More than 1 year"><div class="radio-box"></div><span>More than 1 year</span></div>
+          <div class="check-item" data-value="I don't use AI tools"><div class="radio-box"></div><span>I don't use AI tools</span></div>
+        </div>
+        <input type="hidden" name="usage_duration" id="val-usage_duration" />
+        <div class="field-error" id="err-duration">Please select one option.</div>
+      </div>
+
+      <div class="question" id="q-frequency">
+        <label class="q-label">How often do you use AI tools for programming tasks? <span class="required">*</span></label>
+        <div class="check-grid" data-type="radio" data-name="usage_frequency">
+          <div class="check-item" data-value="Daily"><div class="radio-box"></div><span>Daily</span></div>
+          <div class="check-item" data-value="Several times a week"><div class="radio-box"></div><span>Several times a week</span></div>
+          <div class="check-item" data-value="Occasionally"><div class="radio-box"></div><span>Occasionally</span></div>
+          <div class="check-item" data-value="Rarely / never"><div class="radio-box"></div><span>Rarely / never</span></div>
+        </div>
+        <input type="hidden" name="usage_frequency" id="val-usage_frequency" />
+        <div class="field-error" id="err-frequency">Please select one option.</div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 3: How You Use AI ══ -->
+    <div class="section-card" data-section="3">
+      <div class="section-title">
+        <span class="section-number">3</span>
+        <i data-lucide="target" style="width:16px;height:16px;"></i>
+        How You Use AI
+      </div>
+
+      <div class="question">
+        <label class="q-label">For which programming tasks do you use AI?
+          <span class="q-hint">Select all that apply.</span>
+        </label>
+        <div class="check-grid check-grid-2col" data-type="checkbox" data-name="use_cases">
+          <div class="check-item" data-value="Writing code from scratch"><div class="check-box"></div><span>Writing code from scratch</span></div>
+          <div class="check-item" data-value="Debugging / finding errors"><div class="check-box"></div><span>Debugging / finding errors</span></div>
+          <div class="check-item" data-value="Explaining code or concepts"><div class="check-box"></div><span>Explaining code or concepts</span></div>
+          <div class="check-item" data-value="Refactoring code"><div class="check-box"></div><span>Refactoring code</span></div>
+          <div class="check-item" data-value="Writing tests"><div class="check-box"></div><span>Writing tests</span></div>
+          <div class="check-item" data-value="Documentation"><div class="check-box"></div><span>Documentation</span></div>
+          <div class="check-item" data-value="Learning new languages / frameworks"><div class="check-box"></div><span>Learning new languages / frameworks</span></div>
+          <div class="check-item" data-value="Semester / final projects"><div class="check-box"></div><span>Semester / final projects</span></div>
+        </div>
+        <input type="hidden" name="use_cases" id="val-use_cases" />
+      </div>
+
+      <div class="question" id="q-verify">
+        <label class="q-label">When AI gives you code, do you verify it before using it? <span class="required">*</span></label>
+        <div class="check-grid" data-type="radio" data-name="verify_answers">
+          <div class="check-item" data-value="Always"><div class="radio-box"></div><span>Always — I read and test it</span></div>
+          <div class="check-item" data-value="Usually"><div class="radio-box"></div><span>Usually</span></div>
+          <div class="check-item" data-value="Sometimes"><div class="radio-box"></div><span>Sometimes</span></div>
+          <div class="check-item" data-value="Rarely"><div class="radio-box"></div><span>Rarely — I trust it works</span></div>
+        </div>
+        <input type="hidden" name="verify_answers" id="val-verify_answers" />
+        <div class="field-error" id="err-verify">Please select one option.</div>
+      </div>
+
+      <div class="question" id="q-understand">
+        <label class="q-label">When you submit AI-generated code for assignments, do you understand how it works? <span class="required">*</span></label>
+        <div class="check-grid" data-type="radio" data-name="understand_before_submit">
+          <div class="check-item" data-value="Yes, fully"><div class="radio-box"></div><span>Yes, fully</span></div>
+          <div class="check-item" data-value="Mostly"><div class="radio-box"></div><span>Mostly</span></div>
+          <div class="check-item" data-value="Partially"><div class="radio-box"></div><span>Partially</span></div>
+          <div class="check-item" data-value="No — I just submit it"><div class="radio-box"></div><span>No — I just submit it</span></div>
+          <div class="check-item" data-value="I don't submit AI code"><div class="radio-box"></div><span>I don't submit AI code</span></div>
+        </div>
+        <input type="hidden" name="understand_before_submit" id="val-understand_before_submit" />
+        <div class="field-error" id="err-understand">Please select one option.</div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 4: Per-Tool Ratings ══ -->
+    <div class="section-card" data-section="4">
+      <div class="section-title">
+        <span class="section-number">4</span>
+        <i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i>
+        Rate Each Tool
+      </div>
+      <p style="font-size:0.85rem;color:#64748b;margin-bottom:16px;">
+        Rate each tool you have used on three dimensions (1 = very poor, 5 = excellent).
+        Toggle <strong>Haven't used</strong> to skip tools you don't know.
+      </p>
+
+      <div class="tool-rating-grid" id="tool-rating-grid">
+        <!-- Cards injected by JS -->
+      </div>
+    </div>
+
+    <!-- ══ SECTION 5: Learning Impact (Likert agree/disagree) ══ -->
+    <div class="section-card" data-section="5">
+      <div class="section-title">
+        <span class="section-number">5</span>
+        <i data-lucide="brain" style="width:16px;height:16px;"></i>
+        Impact on Learning
+      </div>
+      <p style="font-size:0.85rem;color:#64748b;margin-bottom:16px;">Rate your agreement with each statement (1 = strongly disagree, 5 = strongly agree).</p>
+
+      <table class="agree-table">
+        <thead>
+          <tr>
+            <th>Statement</th>
+            <th title="Strongly disagree">1</th>
+            <th>2</th>
+            <th>3</th>
+            <th>4</th>
+            <th title="Strongly agree">5</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Using AI tools has deepened my understanding of programming concepts.</td>
+            <td><input class="likert-radio" type="radio" name="stmt_deepened_understanding" value="1"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_deepened_understanding" value="2"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_deepened_understanding" value="3"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_deepened_understanding" value="4"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_deepened_understanding" value="5"></td>
+          </tr>
+          <tr>
+            <td>I could solve the same programming tasks without AI if needed.</td>
+            <td><input class="likert-radio" type="radio" name="stmt_can_solve_without" value="1"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_can_solve_without" value="2"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_can_solve_without" value="3"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_can_solve_without" value="4"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_can_solve_without" value="5"></td>
+          </tr>
+          <tr>
+            <td>AI tools save me significant time on programming assignments.</td>
+            <td><input class="likert-radio" type="radio" name="stmt_saves_time" value="1"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_saves_time" value="2"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_saves_time" value="3"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_saves_time" value="4"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_saves_time" value="5"></td>
+          </tr>
+          <tr>
+            <td>I often use AI-generated answers without fully understanding them.</td>
+            <td><input class="likert-radio" type="radio" name="stmt_use_blindly" value="1"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_use_blindly" value="2"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_use_blindly" value="3"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_use_blindly" value="4"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_use_blindly" value="5"></td>
+          </tr>
+          <tr>
+            <td>AI has changed how I approach problem-solving in programming.</td>
+            <td><input class="likert-radio" type="radio" name="stmt_changed_approach" value="1"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_changed_approach" value="2"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_changed_approach" value="3"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_changed_approach" value="4"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_changed_approach" value="5"></td>
+          </tr>
+          <tr>
+            <td>AI explanations are clearer than textbooks or lecture notes.</td>
+            <td><input class="likert-radio" type="radio" name="stmt_clearer_than_docs" value="1"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_clearer_than_docs" value="2"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_clearer_than_docs" value="3"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_clearer_than_docs" value="4"></td>
+            <td><input class="likert-radio" type="radio" name="stmt_clearer_than_docs" value="5"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══ SECTION 6: Task-Specific Performance ══ -->
+    <div class="section-card" data-section="6">
+      <div class="section-title">
+        <span class="section-number">6</span>
+        <i data-lucide="trophy" style="width:16px;height:16px;"></i>
+        Best Tool for Each Task
+      </div>
+      <p style="font-size:0.85rem;color:#64748b;margin-bottom:16px;">
+        If you have used multiple AI tools, select which one performed best for each task type.
+        Leave blank if you haven't compared them.
+      </p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">
+        <div class="question">
+          <label class="q-label" for="best-debug">Debugging / finding errors</label>
+          <select id="best-debug" name="best_for_debugging">
+            <option value="">— select —</option>
+            <option>ChatGPT</option><option>GitHub Copilot</option><option>Claude</option>
+            <option>Gemini</option><option>Cursor IDE</option><option>Codeium</option>
+            <option>All equally good</option><option>None helped much</option>
+          </select>
+        </div>
+        <div class="question">
+          <label class="q-label" for="best-explain">Explaining concepts / code</label>
+          <select id="best-explain" name="best_for_explaining">
+            <option value="">— select —</option>
+            <option>ChatGPT</option><option>GitHub Copilot</option><option>Claude</option>
+            <option>Gemini</option><option>Cursor IDE</option><option>Codeium</option>
+            <option>All equally good</option><option>None helped much</option>
+          </select>
+        </div>
+        <div class="question">
+          <label class="q-label" for="best-generate">Writing / generating code</label>
+          <select id="best-generate" name="best_for_generating">
+            <option value="">— select —</option>
+            <option>ChatGPT</option><option>GitHub Copilot</option><option>Claude</option>
+            <option>Gemini</option><option>Cursor IDE</option><option>Codeium</option>
+            <option>All equally good</option><option>None helped much</option>
+          </select>
+        </div>
+        <div class="question">
+          <label class="q-label" for="best-refactor">Refactoring / improving code</label>
+          <select id="best-refactor" name="best_for_refactoring">
+            <option value="">— select —</option>
+            <option>ChatGPT</option><option>GitHub Copilot</option><option>Claude</option>
+            <option>Gemini</option><option>Cursor IDE</option><option>Codeium</option>
+            <option>All equally good</option><option>None helped much</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="question" style="margin-top:20px;" id="q-recommend">
+        <label class="q-label">How likely are you to recommend AI tools to a classmate for learning programming? <span class="required">*</span>
+          <span class="q-hint">1 = Not at all likely, 10 = Extremely likely</span>
+        </label>
+        <div class="nps-row" id="nps-row"></div>
+        <div class="nps-labels"><span>Not likely</span><span>Extremely likely</span></div>
+        <input type="hidden" name="recommend_score" id="val-recommend_score" />
+        <div class="field-error" id="err-recommend">Please select a score.</div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 7: AI in Education ══ -->
+    <div class="section-card" data-section="7">
+      <div class="section-title">
+        <span class="section-number">7</span>
+        <i data-lucide="book-open" style="width:16px;height:16px;"></i>
+        AI in Education
+      </div>
+
+      <div class="question" id="q-faculty">
+        <label class="q-label">Is the use of AI tools accepted at your faculty? <span class="required">*</span></label>
+        <div class="check-grid" data-type="radio" data-name="faculty_acceptance">
+          <div class="check-item" data-value="Yes, openly encouraged"><div class="radio-box"></div><span>Yes, openly encouraged</span></div>
+          <div class="check-item" data-value="Tolerated but not discussed"><div class="radio-box"></div><span>Tolerated but not discussed</span></div>
+          <div class="check-item" data-value="Depends on the course"><div class="radio-box"></div><span>Depends on the course</span></div>
+          <div class="check-item" data-value="Discouraged or forbidden"><div class="radio-box"></div><span>Discouraged or forbidden</span></div>
+          <div class="check-item" data-value="I don't know"><div class="radio-box"></div><span>I don't know</span></div>
+        </div>
+        <input type="hidden" name="faculty_acceptance" id="val-faculty_acceptance" />
+        <div class="field-error" id="err-faculty">Please select one option.</div>
+      </div>
+
+      <div class="question" id="q-integrate">
+        <label class="q-label">Should universities actively integrate AI tools into programming courses? <span class="required">*</span></label>
+        <div class="check-grid" data-type="radio" data-name="should_integrate">
+          <div class="check-item" data-value="Strongly agree"><div class="radio-box"></div><span>Strongly agree</span></div>
+          <div class="check-item" data-value="Agree"><div class="radio-box"></div><span>Agree</span></div>
+          <div class="check-item" data-value="Neutral"><div class="radio-box"></div><span>Neutral</span></div>
+          <div class="check-item" data-value="Disagree"><div class="radio-box"></div><span>Disagree</span></div>
+          <div class="check-item" data-value="Strongly disagree"><div class="radio-box"></div><span>Strongly disagree</span></div>
+        </div>
+        <input type="hidden" name="should_integrate" id="val-should_integrate" />
+        <div class="field-error" id="err-integrate">Please select one option.</div>
+      </div>
+
+      <div class="question">
+        <label class="q-label">How should AI ideally be used in programming education?
+          <span class="q-hint">Select all that apply.</span>
+        </label>
+        <div class="check-grid check-grid-2col" data-type="checkbox" data-name="ideal_ai_role">
+          <div class="check-item" data-value="As a hint / guidance tool only"><div class="check-box"></div><span>As a hint / guidance tool only</span></div>
+          <div class="check-item" data-value="As a productivity / code completion tool"><div class="check-box"></div><span>As a productivity / code completion tool</span></div>
+          <div class="check-item" data-value="As a tutor for self-paced learning"><div class="check-box"></div><span>As a tutor for self-paced learning</span></div>
+          <div class="check-item" data-value="Taught as a dedicated subject"><div class="check-box"></div><span>Taught as a dedicated subject</span></div>
+          <div class="check-item" data-value="Banned in assessed work"><div class="check-box"></div><span>Banned in assessed work</span></div>
+          <div class="check-item" data-value="No restrictions at all"><div class="check-box"></div><span>No restrictions at all</span></div>
+        </div>
+        <input type="hidden" name="ideal_ai_role" id="val-ideal_ai_role" />
+      </div>
+    </div>
+
+    <!-- ══ SECTION 8: Open Questions ══ -->
+    <div class="section-card" data-section="8">
+      <div class="section-title">
+        <span class="section-number">8</span>
+        <i data-lucide="message-square" style="width:16px;height:16px;"></i>
+        Your Opinion
+      </div>
+
+      <div class="question">
+        <label class="q-label" for="q-advantage">What is the biggest advantage of AI tools for programming students?</label>
+        <textarea id="q-advantage" name="advantage" placeholder="e.g. Instant feedback, ability to ask follow-up questions, available 24/7..."></textarea>
+      </div>
+      <div class="question">
+        <label class="q-label" for="q-risk">What is the biggest risk of using AI during studies?</label>
+        <textarea id="q-risk" name="risk" placeholder="e.g. Dependency, shallow understanding, academic dishonesty..."></textarea>
+      </div>
+      <div class="question">
+        <label class="q-label" for="q-missing">What is currently missing from AI tools for use in programming education?</label>
+        <textarea id="q-missing" name="missing_features" placeholder="e.g. Multi-level explanations, better error tracing, offline support..."></textarea>
+      </div>
+      <div class="question">
+        <label class="q-label" for="q-extra">Anything else you'd like to add?</label>
+        <textarea id="q-extra" name="additional_comments" placeholder="Any other thoughts, experiences, or comparisons..."></textarea>
+      </div>
+    </div>
+
+    <div class="submit-area">
+      <button type="submit" class="btn-submit" id="submit-btn">
+        <span id="btn-text">Submit Survey</span>
+      </button>
+      <p class="submit-note">Fully anonymous — no personal data is collected or stored.</p>
+    </div>
+
+  </form>
+
+  <div id="success-msg">
+    <div class="success-icon"><i data-lucide="check-circle-2" style="width:48px;height:48px;"></i></div>
+    <h2>Thank you for your response!</h2>
+    <p>Your answers have been recorded and will contribute to the research.<br>The thesis will be available at the faculty after completion.</p>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<script>
+  // ── CONFIG — replace with your deployed Apps Script URL ──────────────
+  var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx1m4CyDxs59k93wgJHREoZBp8fO8UEIwJ1-4B-IaIYwzxJkpIC656gb8mRcvPNpilJ/exec';
+
+  lucide.createIcons();
+
+  // ── Build tool rating cards ───────────────────────────────────────────
+  var TOOLS = ['ChatGPT', 'GitHub Copilot', 'Claude', 'Gemini', 'Cursor IDE'];
+  var DIMS  = [
+    { key: 'ease',     label: 'Ease of use' },
+    { key: 'quality',  label: 'Answer quality' },
+    { key: 'learning', label: 'Useful for learning' },
+  ];
+
+  var grid = document.getElementById('tool-rating-grid');
+  TOOLS.forEach(function(tool) {
+    var slug = tool.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    var card = document.createElement('div');
+    card.className = 'tool-card';
+    card.id = 'card-' + slug;
+
+    var header = '<div class="tool-card-header">' +
+      '<span class="tool-card-name">' + tool + '</span>' +
+      '<label class="not-used-toggle" id="toggle-label-' + slug + '">' +
+        '<input type="checkbox" id="not-used-' + slug + '" />' +
+        '<div class="toggle-pill"></div>' +
+        '<span>Haven\'t used</span>' +
+      '</label>' +
+    '</div>';
+
+    var dims = DIMS.map(function(d) {
+      var stars = [1,2,3,4,5].map(function(n) {
+        return '<button type="button" class="star-btn" data-tool="' + slug + '" data-dim="' + d.key + '" data-val="' + n + '">' + n + '</button>';
+      }).join('');
+      return '<div class="dim-row">' +
+        '<span class="dim-label">' + d.label + '</span>' +
+        '<div class="star-row" id="stars-' + slug + '-' + d.key + '">' + stars + '</div>' +
+        '<input type="hidden" name="rating_' + slug + '_' + d.key + '" id="val-rating_' + slug + '_' + d.key + '" value="" />' +
+      '</div>';
+    }).join('');
+
+    card.innerHTML = header + dims;
+    grid.appendChild(card);
+
+    // Star button click
+    card.addEventListener('click', function(e) {
+      var btn = e.target.closest('.star-btn');
+      if (!btn) return;
+      var t = btn.dataset.tool, d = btn.dataset.dim, v = btn.dataset.val;
+      document.querySelectorAll('#stars-' + t + '-' + d + ' .star-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('val-rating_' + t + '_' + d).value = v;
+      updateProgress();
+    });
+
+    // Haven't used toggle
+    var chk = document.getElementById('not-used-' + slug);
+    var lbl = document.getElementById('toggle-label-' + slug);
+    chk.addEventListener('change', function() {
+      card.classList.toggle('not-used', chk.checked);
+      lbl.classList.toggle('active', chk.checked);
+      DIMS.forEach(function(d) {
+        var hiddenInput = document.getElementById('val-rating_' + slug + '_' + d.key);
+        if (chk.checked) {
+          hiddenInput.value = 'N/A';
+        } else {
+          // restore star selection if any
+          var activeStar = document.querySelector('#stars-' + slug + '-' + d.key + ' .star-btn.active');
+          hiddenInput.value = activeStar ? activeStar.dataset.val : '';
+        }
+      });
+      updateProgress();
+    });
+  });
+
+  // ── Build NPS scale ──────────────────────────────────────────────────
+  var npsRow = document.getElementById('nps-row');
+  for (var i = 1; i <= 10; i++) {
+    (function(n) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'nps-btn';
+      btn.textContent = n;
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.nps-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        document.getElementById('val-recommend_score').value = n;
+        updateProgress();
+      });
+      npsRow.appendChild(btn);
+    })(i);
+  }
+
+  // ── Custom radio / checkbox groups ───────────────────────────────────
+  document.querySelectorAll('[data-type="radio"], [data-type="checkbox"]').forEach(function(grid) {
+    var type = grid.dataset.type;
+    var name = grid.dataset.name;
+    var hidden = document.getElementById('val-' + name);
+
+    grid.querySelectorAll('.check-item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        if (type === 'radio') {
+          grid.querySelectorAll('.check-item').forEach(function(i) { i.classList.remove('selected'); });
+          item.classList.add('selected');
+          if (hidden) hidden.value = item.dataset.value;
+        } else {
+          item.classList.toggle('selected');
+          var selected = Array.from(grid.querySelectorAll('.check-item.selected')).map(function(i) { return i.dataset.value; });
+          if (hidden) hidden.value = selected.join(', ');
+        }
+        updateProgress();
+      });
+    });
+  });
+
+  // ── Progress ─────────────────────────────────────────────────────────
+  function updateProgress() {
+    var done = new Set();
+    function v(id) { var el = document.getElementById(id); return el && el.value; }
+    if (v('year') && v('programme') && v('val-programming_experience')) done.add(1);
+    if (v('val-uses_ai') && v('val-usage_duration') && v('val-usage_frequency')) done.add(2);
+    if (v('val-verify_answers') && v('val-understand_before_submit')) done.add(3);
+    // Section 4: at least one tool rated or marked N/A
+    var rated = document.querySelector('[id^="val-rating_"][value]:not([value=""])');
+    if (rated) done.add(4);
+    // Section 5: at least 3 Likert statements answered
+    var stmts = ['stmt_deepened_understanding','stmt_can_solve_without','stmt_saves_time','stmt_use_blindly','stmt_changed_approach','stmt_clearer_than_docs'];
+    var answeredStmts = stmts.filter(function(s) { return document.querySelector('[name="'+s+'"]:checked'); }).length;
+    if (answeredStmts >= 3) done.add(5);
+    if (v('val-recommend_score')) done.add(6);
+    if (v('val-faculty_acceptance') && v('val-should_integrate')) done.add(7);
+    done.add(8); // open questions always count
+    var pct = Math.round((done.size / 8) * 100);
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-label').textContent = done.size + ' / 8 sections';
+  }
+  document.querySelectorAll('select, input[type="text"], textarea').forEach(function(el) {
+    el.addEventListener('change', updateProgress);
+    el.addEventListener('input', updateProgress);
+  });
+  updateProgress();
+
+  // ── Validation ────────────────────────────────────────────────────────
+  function showErr(qId, errId) {
+    var q = document.getElementById(qId); if (q) q.classList.add('has-error');
+    var e = document.getElementById(errId); if (e) e.style.display = 'block';
+  }
+  function clearErr(qId, errId) {
+    var q = document.getElementById(qId); if (q) q.classList.remove('has-error');
+    var e = document.getElementById(errId); if (e) e.style.display = 'none';
+  }
+
+  function validate() {
+    var ok = true;
+    var checks = [
+      ['q-year',        'err-year',        function() { return document.getElementById('year').value; }],
+      ['q-programme',   'err-programme',   function() { return document.getElementById('programme').value; }],
+      ['q-experience',  'err-experience',  function() { return document.getElementById('val-programming_experience').value; }],
+      ['q-uses-ai',     'err-uses-ai',     function() { return document.getElementById('val-uses_ai').value; }],
+      ['q-duration',    'err-duration',    function() { return document.getElementById('val-usage_duration').value; }],
+      ['q-frequency',   'err-frequency',   function() { return document.getElementById('val-usage_frequency').value; }],
+      ['q-verify',      'err-verify',      function() { return document.getElementById('val-verify_answers').value; }],
+      ['q-understand',  'err-understand',  function() { return document.getElementById('val-understand_before_submit').value; }],
+      ['q-recommend',   'err-recommend',   function() { return document.getElementById('val-recommend_score').value; }],
+      ['q-faculty',     'err-faculty',     function() { return document.getElementById('val-faculty_acceptance').value; }],
+      ['q-integrate',   'err-integrate',   function() { return document.getElementById('val-should_integrate').value; }],
+    ];
+    checks.forEach(function(c) { clearErr(c[0], c[1]); });
+    checks.forEach(function(c) { if (!c[2]()) { showErr(c[0], c[1]); ok = false; } });
+    return ok;
+  }
+
+  // ── Collect all form values into a plain object ───────────────────────
+  function collectData() {
+    var data = {};
+    // Standard hidden inputs + selects + textareas
+    document.querySelectorAll('input[type="hidden"], select, textarea, input[type="text"]').forEach(function(el) {
+      if (el.name && el.id !== 'not-used-undefined') data[el.name] = el.value;
+    });
+    // Likert radios (native)
+    document.querySelectorAll('input[type="radio"]:checked').forEach(function(el) {
+      data[el.name] = el.value;
+    });
+    return data;
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────
+  document.getElementById('survey-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (!validate()) {
+      document.querySelector('.has-error').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    var btn = document.getElementById('submit-btn');
+    var btnText = document.getElementById('btn-text');
+    btn.disabled = true;
+    btnText.textContent = 'Submitting...';
+
+    var payload = collectData();
+
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',               // required for Apps Script — response will be opaque
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    })
+    .then(function() {
+      // no-cors always resolves (opaque response) — data was sent successfully
+      document.getElementById('survey-form').style.display = 'none';
+      var msg = document.getElementById('success-msg');
+      msg.style.display = 'block';
+      lucide.createIcons();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    })
+    .catch(function() {
+      btn.disabled = false;
+      btnText.textContent = 'Submit Survey';
+      alert('Network error — please check your connection and try again.');
+    });
+  });
+</script>
+
+</body>
+</html>

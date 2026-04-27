@@ -94,14 +94,21 @@ def add_task(request):
 @login_required
 def list_tasks(request):
     sort_by = request.GET.get('sort', '-id')
-    
-    valid_sorts = ['title', 'language', '-id', 'id']
-    
+    valid_sorts = ['title', 'language', '-id', 'id', 'task_type']
     if sort_by not in valid_sorts:
         sort_by = '-id'
+
     tasks = RefactoringTask.objects.all().order_by(sort_by)
-    
-    return render(request, 'tasks.html', {'tasks': tasks, 'current_sort': sort_by})
+
+    submitted_task_ids = set(
+        CodeRun.objects.filter(user=request.user).values_list('task_id', flat=True)
+    )
+
+    return render(request, 'tasks.html', {
+        'tasks': tasks,
+        'current_sort': sort_by,
+        'submitted_task_ids': submitted_task_ids,
+    })
 
 @login_required
 def task_detail_view(request, user_id, task_id):
@@ -175,7 +182,15 @@ def task_detail(request, task_id):
 
 @login_required
 def index(request):
-    return render(request, 'index.html')
+    total_tasks = RefactoringTask.objects.count()
+    submitted_count = CodeRun.objects.filter(user=request.user).values('task').distinct().count()
+    type_counts = {t: RefactoringTask.objects.filter(task_type=t).count()
+                   for t in ['refactoring', 'error_detection', 'test_writing', 'code_extension']}
+    return render(request, 'index.html', {
+        'total_tasks': total_tasks,
+        'submitted_count': submitted_count,
+        'type_counts': type_counts,
+    })
 
 
 def register(request):
@@ -194,11 +209,32 @@ def register(request):
 def rating_view(request):
     if not request.user.is_superuser:
         return render(request, 'unauthorized.html', status=403)
-    students = User.objects.filter(is_superuser=False)  
-    return render(request, 'rating.html', {'students': students})
+    from django.db.models import Count, Max
+    students = (
+        User.objects
+        .filter(is_superuser=False)
+        .annotate(
+            submission_count=Count('coderun', distinct=True),
+            last_submission=Max('coderun__created_at'),
+        )
+        .order_by('username')
+    )
+    total_tasks = RefactoringTask.objects.count()
+    return render(request, 'rating.html', {'students': students, 'total_tasks': total_tasks})
 
 
 logger = logging.getLogger(__name__)
+
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_show_tests(request, task_id):
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'Unauthorized.'}, status=403)
+    task = get_object_or_404(RefactoringTask, id=task_id)
+    task.show_tests = not task.show_tests
+    task.save()
+    return JsonResponse({'show_tests': task.show_tests})
 
 
 @login_required
@@ -211,6 +247,20 @@ def get_tasks_for_student(request, student_id):
     tasks_data = [{'id': task['id'], 'title': task['title']} for task in tasks]
     return JsonResponse({'tasks': tasks_data})
 
+def _docker_run(host_tests_dir, run_command, timeout=30):
+    """Run a command in the python-runner Docker container with host_tests_dir mounted."""
+    cmd = [
+        'docker', 'run', '--rm',
+        '-v', f"{host_tests_dir}:/usr/src/app",
+        '-v', f"{host_tests_dir}:/tests",
+        'python-runner',
+    ] + run_command
+    return subprocess.run(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, encoding='utf-8', errors='replace', timeout=timeout,
+    )
+
+
 @login_required
 @require_http_methods(["POST"])
 def run_code(request, task_id):
@@ -218,61 +268,47 @@ def run_code(request, task_id):
 
     try:
         data = json.loads(request.body.decode('utf-8'))
-        code = data.get('code')
-        if not code:
-            return JsonResponse({"error": "No code provided."}, status=400)
+        code = data.get('code', '')
 
         task = get_object_or_404(RefactoringTask, id=task_id)
-        language = task.language 
-        
-        host_tests_dir = os.path.join(settings.BASE_DIR, 'test_directory')
-        if not os.path.exists(host_tests_dir):
-            os.makedirs(host_tests_dir)
+        language = task.language
 
-        filename = f"temp_code_{task_id}.py"
-        run_command = []
-        
-        # --- 1. SPÚŠŤANIE KÓDU ---
+        host_tests_dir = os.path.join(settings.BASE_DIR, 'test_directory')
+        os.makedirs(host_tests_dir, exist_ok=True)
+
+        # ── Test Writing: student submits tests, not a solution ────────────────
+        if task.task_type == 'test_writing' and language == 'python':
+            return _run_test_writing(request, task, task_id, code, host_tests_dir)
+
+        # ── Normal flow: student submits solution code ─────────────────────────
+        # 1. Write student code and run it
         if language == 'python':
             filename = f"temp_code_{task_id}.py"
             run_command = ['python', f'/usr/src/app/{filename}']
-
         elif language == 'cpp':
             filename = f"temp_code_{task_id}.cpp"
             run_command = ['bash', '-c', f"g++ /usr/src/app/{filename} -o /usr/src/app/app_{task_id} && /usr/src/app/app_{task_id}"]
-
         elif language == 'java':
             match = re.search(r'public\s+class\s+(\w+)', code)
             class_name = match.group(1) if match else "Main"
             filename = f"{class_name}.java"
             run_command = ['bash', '-c', f"javac /usr/src/app/{filename} && java -cp /usr/src/app {class_name}"]
 
-        file_path = os.path.join(host_tests_dir, filename)
-        with open(file_path, 'w', encoding='utf-8') as temp_file:
-            temp_file.write(code)
+        with open(os.path.join(host_tests_dir, filename), 'w', encoding='utf-8') as f:
+            f.write(code)
 
-        docker_cmd = ['docker', 'run', '--rm', '-v', f"{host_tests_dir}:/usr/src/app", 'python-runner'] + run_command
-
-        result = subprocess.run(
-            docker_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-            encoding='utf-8', errors='replace', timeout=30
-        )
+        result = _docker_run(host_tests_dir, run_command)
         full_output = (result.stdout or "") + (result.stderr or "")
 
-        # --- 2. SPÚŠŤANIE TESTOV ---
+        # 2. Run task tests against student code
         test_stdout = ""
         test_stderr = ""
-        
+
         if language == 'python':
-            test_pattern = f'tests_task_{task_id}*.py'
-            docker_test_cmd = [
-                'docker', 'run', '--rm', '-v', f"{host_tests_dir}:/tests", '-v', f"{host_tests_dir}:/usr/src/app",
-                'python-runner', 'python', '-m', 'unittest', 'discover', '/tests', test_pattern
-            ]
             try:
-                test_result = subprocess.run(
-                    docker_test_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8', errors='replace', timeout=30
-                )
+                test_result = _docker_run(host_tests_dir, [
+                    'python', '-m', 'unittest', 'discover', '/tests', f'tests_task_{task_id}*.py'
+                ])
                 test_stdout = test_result.stdout or ""
                 test_stderr = test_result.stderr or ""
             except subprocess.TimeoutExpired:
@@ -281,52 +317,42 @@ def run_code(request, task_id):
         elif language == 'cpp':
             test_file = f"tests_task_{task_id}.cpp"
             if os.path.exists(os.path.join(host_tests_dir, test_file)):
-                test_cmd = ['bash', '-c', f"g++ -DRUNNING_TESTS /tests/{test_file} -o /tests/test_app_{task_id} && /tests/test_app_{task_id}"]
-                docker_test_cmd = ['docker', 'run', '--rm', '-v', f"{host_tests_dir}:/tests", '-v', f"{host_tests_dir}:/usr/src/app", 'python-runner'] + test_cmd
                 try:
-                    test_result = subprocess.run(
-                        docker_test_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8', errors='replace', timeout=30
-                    )
+                    test_result = _docker_run(host_tests_dir, ['bash', '-c',
+                        f"g++ -DRUNNING_TESTS /tests/{test_file} -o /tests/test_app_{task_id} && /tests/test_app_{task_id}"
+                    ])
                     if test_result.returncode == 0:
-                        test_stdout = "✅ Všetky testy prešli.\n" + (test_result.stdout or "")
+                        test_stdout = "✅ All tests passed.\n" + (test_result.stdout or "")
                     else:
-                        test_stdout = "❌ Testy zlyhali.\n" + (test_result.stdout or "") + (test_result.stderr or "")
+                        test_stdout = "❌ Tests failed.\n" + (test_result.stdout or "") + (test_result.stderr or "")
                 except subprocess.TimeoutExpired:
                     test_stderr = "Tests timed out."
             else:
-                test_stdout = "Testovací súbor nebol nájdený."
+                test_stdout = "No test file found."
 
         elif language == 'java':
             match = re.search(r'public\s+class\s+(\w+)', code)
             student_class_name = match.group(1) if match else "Main"
-            student_filename = f"{student_class_name}.java"
             test_class_name = f"TestMain_{task_id}"
             test_filename = f"{test_class_name}.java"
-
             if os.path.exists(os.path.join(host_tests_dir, test_filename)):
-                test_cmd = [
-                    'bash', '-c',
-                    f"javac /usr/src/app/{student_filename} /usr/src/app/{test_filename} && java -DTEST=true -cp /usr/src/app:/tests {test_class_name}"
-                ]
-                docker_test_cmd = ['docker', 'run', '--rm', '-v', f"{host_tests_dir}:/usr/src/app", '-v', f"{host_tests_dir}:/tests", 'python-runner'] + test_cmd
-                
                 try:
-                    # Java kompilácia trvá dlhšie, preto 45s
-                    test_result = subprocess.run(
-                        docker_test_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8', errors='replace', timeout=45
-                    )
+                    test_result = _docker_run(host_tests_dir, ['bash', '-c',
+                        f"javac /usr/src/app/{student_class_name}.java /usr/src/app/{test_filename} && "
+                        f"java -cp /usr/src/app {test_class_name}"
+                    ], timeout=45)
                     if test_result.returncode == 0:
-                        test_stdout = "✅ Všetky testy prešli.\n" + (test_result.stdout or "")
+                        test_stdout = "✅ All tests passed.\n" + (test_result.stdout or "")
                     else:
-                        test_stdout = "❌ Testy zlyhali.\n" + (test_result.stdout or "") + (test_result.stderr or "")
+                        test_stdout = "❌ Tests failed.\n" + (test_result.stdout or "") + (test_result.stderr or "")
                 except subprocess.TimeoutExpired:
                     test_stderr = "Tests timed out (Java)."
             else:
-                test_stdout = "Testovací súbor nebol nájdený."
+                test_stdout = "No test file found."
 
         CodeRun.objects.create(
             user=request.user, task=task, code=code,
-            output=full_output, tests_output=test_stdout + test_stderr
+            output=full_output, tests_output=test_stdout + test_stderr,
         )
 
         return JsonResponse({
@@ -338,8 +364,75 @@ def run_code(request, task_id):
         })
 
     except Exception as e:
-        logger.exception("Chyba pri spúšťaní kódu")
+        logger.exception("Error running code")
         return JsonResponse({"error": str(e)}, status=500)
+
+
+def _run_test_writing(request, task, task_id, student_test_code, host_tests_dir):
+    """
+    For test_writing tasks: run the student's tests against the buggy code
+    (expect FAIL) and against the solution code (expect PASS).
+    """
+    if not task.solution_code:
+        return JsonResponse({"error": "This task has no solution code configured."}, status=500)
+
+    # Inject import if student forgot it
+    import_line = f"from temp_code_{task_id} import *"
+    if f"temp_code_{task_id}" not in student_test_code:
+        if "import unittest" in student_test_code:
+            student_test_code = student_test_code.replace(
+                "import unittest", f"import unittest\n{import_line}"
+            )
+        else:
+            student_test_code = f"import unittest\n{import_line}\n" + student_test_code
+    if "unittest.main()" not in student_test_code:
+        student_test_code += "\n\nif __name__ == '__main__':\n    unittest.main()"
+
+    student_test_file = f"student_tests_{task_id}.py"
+    temp_code_file = f"temp_code_{task_id}.py"
+    student_test_path = os.path.join(host_tests_dir, student_test_file)
+    temp_code_path = os.path.join(host_tests_dir, temp_code_file)
+
+    with open(student_test_path, 'w', encoding='utf-8') as f:
+        f.write(student_test_code)
+
+    run_cmd = ['bash', '-c', f'cd /usr/src/app && python -m unittest {student_test_file[:-3]} 2>&1']
+
+    # Run 1: against buggy code (should FAIL)
+    with open(temp_code_path, 'w', encoding='utf-8') as f:
+        f.write(task.input_code)
+    try:
+        buggy_result = _docker_run(host_tests_dir, run_cmd)
+        buggy_output = (buggy_result.stdout or "") + (buggy_result.stderr or "")
+        buggy_passed = buggy_result.returncode == 0
+    except subprocess.TimeoutExpired:
+        buggy_output = "Timed out."
+        buggy_passed = False
+
+    # Run 2: against solution code (should PASS)
+    with open(temp_code_path, 'w', encoding='utf-8') as f:
+        f.write(task.solution_code)
+    try:
+        solution_result = _docker_run(host_tests_dir, run_cmd)
+        solution_output = (solution_result.stdout or "") + (solution_result.stderr or "")
+        solution_passed = solution_result.returncode == 0
+    except subprocess.TimeoutExpired:
+        solution_output = "Timed out."
+        solution_passed = False
+
+    CodeRun.objects.create(
+        user=request.user, task=task, code=student_test_code,
+        output=f"[Buggy] {buggy_output}",
+        tests_output=f"[Solution] {solution_output}",
+    )
+
+    return JsonResponse({
+        "task_type": "test_writing",
+        "buggy_output": buggy_output,
+        "buggy_passed": buggy_passed,
+        "solution_output": solution_output,
+        "solution_passed": solution_passed,
+    })
 
 # --- OLLAMA INTEGRATION ZAČIATOK ---
 
@@ -366,62 +459,107 @@ def query_ollama(prompt, model="llama3"):
 @login_required
 def generate_task_assignment(request):
     if not request.user.is_superuser:
-        return JsonResponse({'error': 'Nemáš práva.'}, status=403)
+        return JsonResponse({'error': 'Unauthorized.'}, status=403)
 
-    lang = request.GET.get('lang', 'python')
+    lang       = request.GET.get('lang', 'python')
+    task_type  = request.GET.get('task_type', 'refactoring')
+    difficulty = request.GET.get('difficulty', 'medium')
+    topic      = request.GET.get('topic', '').strip()
 
-    # Nastavenie špecifík pre jazyky
     if lang == 'cpp':
         lang_name = "C++"
-        code_example = "#include <iostream>\n..."
-        test_instruction = "Vytvor súbor s 'int main()', ktorý includuje riešenie a pomocou 'assert()' overí výsledok. Kód riešenia (main) obaľ do '#ifndef RUNNING_TESTS'."
+        test_instruction = (
+            "A file with 'int main()' that includes the solution and uses assert() to verify results. "
+            "Wrap the solution's main() in '#ifndef RUNNING_TESTS'."
+        )
     elif lang == 'java':
         lang_name = "Java"
-        code_example = "public class Main { ... }"
-        test_instruction = """
-        Vytvor testovaciu triedu s názvom 'public class TestMain'.
-        Táto trieda musí mať metódu 'public static void main(String[] args)'.
-        V nej vytvor inštanciu testovanej triedy a over výsledky.
-        Ak test zlyhá, vypíš chybu a zavolaj System.exit(1).
-        """
+        test_instruction = (
+            "A class named 'public class TestMain' with a 'public static void main(String[] args)' method "
+            "that creates an instance of the tested class, verifies results, and calls System.exit(1) on failure."
+        )
     else:
         lang_name = "Python"
-        code_example = "def function(): ..."
-        test_instruction = "Python kód s 'import unittest' a triedou dediacou z unittest.TestCase."
+        test_instruction = "Python code with 'import unittest' and a class inheriting from unittest.TestCase."
 
-    system_instruction = f"""
-    Si expert na {lang_name}. Vygeneruj úlohu na refaktorizáciu.
-    
-    DÔLEŽITÉ: Nepoužívaj JSON formát! Použi presne tento formát s oddeľovačmi:
-    
-    ===TITLE===
-    (Sem napíš názov úlohy)
-    ===DESCRIPTION===
-    (Sem napíš popis problému)
-    ===CODE===
-    (Sem vlož len čistý {lang_name} kód zadania. Nepoužívaj markdown značky. Ak je to C++ alebo Java, pridaj do main() funkcie ochranu.)
-    ===TESTS===
-    (Sem vlož {test_instruction})
-    """
+    topic_hint = f" on the topic of '{topic}'" if topic else ""
 
-    user_message = f"Vygeneruj jednu stredne ťažkú úlohu pre {lang_name} (Spaghetti code)."
+    if task_type == 'error_detection':
+        system_instruction = f"""You are an expert {lang_name} developer. Generate an error-detection exercise{topic_hint}.
 
-    messages = [
+IMPORTANT: Do NOT use JSON. Use exactly this format with separators:
+
+===TITLE===
+(Task title, e.g. "Fix the Bug: ...")
+===DESCRIPTION===
+(Tell the student there are 1-2 intentional bugs to find and fix. Describe what the function should do correctly.)
+===CODE===
+({lang_name} code with 1-2 subtle but clear bugs. No markdown. Include a main block showing example usage.)
+===TESTS===
+({test_instruction} — tests that verify the CORRECT behavior after the bugs are fixed.)"""
+        user_message = f"Generate one {difficulty}-difficulty error detection task{topic_hint} for {lang_name}."
+
+    elif task_type == 'test_writing':
+        system_instruction = f"""You are an expert Python developer. Generate a test-writing exercise{topic_hint}.
+
+IMPORTANT: Do NOT use JSON. Use exactly this format with separators:
+
+===TITLE===
+(Task title, e.g. "Write Tests for: ...")
+===DESCRIPTION===
+(Describe the class/function. Tell the student it has 2-3 bugs and they must write tests that FAIL on the buggy version and PASS on the correct one. List the bugs as hints.)
+===BUGGY_CODE===
+(Python class or function with 2-3 clear, testable bugs. No markdown.)
+===SOLUTION===
+(The corrected version of the exact same code. No markdown.)"""
+        user_message = f"Generate one {difficulty}-difficulty test-writing exercise{topic_hint} for Python."
+
+    elif task_type == 'code_extension':
+        system_instruction = f"""You are an expert {lang_name} developer. Generate a code extension exercise{topic_hint}.
+
+IMPORTANT: Do NOT use JSON. Use exactly this format with separators:
+
+===TITLE===
+(Task title, e.g. "Extend: Add a remove() method to ...")
+===DESCRIPTION===
+(Describe exactly what new feature the student must add. The base code works — they only need to extend it. Include any constraints like raising exceptions.)
+===CODE===
+(Working {lang_name} base code with the new feature MISSING. Add a clear TODO comment where the feature should go. No markdown.)
+===TESTS===
+({test_instruction} — tests that verify only the NEW feature works correctly.)"""
+        user_message = f"Generate one {difficulty}-difficulty code extension task{topic_hint} for {lang_name}."
+
+    else:  # refactoring
+        system_instruction = f"""You are an expert {lang_name} developer. Generate a refactoring task{topic_hint}.
+
+IMPORTANT: Do NOT use JSON. Use exactly this format with separators:
+
+===TITLE===
+(Task title)
+===DESCRIPTION===
+(Describe what is wrong with the code structure and what the student should refactor. The code must work correctly — only the structure is bad.)
+===CODE===
+({lang_name} spaghetti code with duplications or poor structure. No markdown.)
+===TESTS===
+({test_instruction} — tests that verify the output is unchanged after refactoring.)"""
+        user_message = f"Generate one {difficulty}-difficulty refactoring task{topic_hint} for {lang_name} (spaghetti code)."
+
+    messages_payload = [
         {"role": "system", "content": system_instruction},
-        {"role": "user", "content": user_message}
+        {"role": "user", "content": user_message},
     ]
 
-    ai_response_text = query_ollama_chat(messages)
+    ai_response_text = query_ollama_chat(messages_payload)
 
     if ai_response_text:
         task_data = parse_ai_response_custom(ai_response_text)
-        
+        task_data['task_type'] = task_type
         if task_data.get('input_code'):
             return JsonResponse(task_data)
         else:
-            return JsonResponse({'error': 'AI nevrátila kód v správnom formáte. Skús znova.'}, status=500)
+            return JsonResponse({'error': 'AI did not return code in the expected format. Try again.'}, status=500)
     else:
-        return JsonResponse({'error': 'Ollama neodpovedá.'}, status=503)
+        return JsonResponse({'error': 'Ollama is not responding.'}, status=503)
 
 
 @login_required
@@ -434,17 +572,17 @@ def get_task_hint(request, task_id):
     
     # 2. Vytvoríme prompt pre AI
     prompt = f"""
-    Si nápomocný učiteľ programovania. Študent rieši úlohu na refaktorizáciu.
-    Názov úlohy: {task.title}
-    Popis problému: {task.description}
-    Kód na opravu:
+    You are a helpful programming teacher. A student is working on a refactoring task.
+    Task title: {task.title}
+    Problem description: {task.description}
+    Code to fix:
     {task.input_code}
 
-    Študent sa zasekol. Napíš mu krátku, povzbudivú radu (max 2-3 vety), na čo sa má sústrediť (napr. "Všimni si, že sa ten istý kód opakuje 3x...").
-    NEPREZRÁDZAJ celé riešenie. Odpovedz v Slovenčine.
-    
-    Výstup musí byť JSON v tvare:
-    {{ "hint": "Tvoja rada sem..." }}
+    The student is stuck. Write a short, encouraging hint (max 2-3 sentences) pointing out what to focus on (e.g. "Notice that the same code repeats 3 times...").
+    Do NOT reveal the full solution. Respond in English.
+
+    Output must be JSON in this format:
+    {{ "hint": "Your hint here..." }}
     """
 
     # 3. Zavoláme našu existujúcu funkciu query_ollama
@@ -473,18 +611,29 @@ def chat_with_ai(request, task_id):
         
         task = get_object_or_404(RefactoringTask, id=task_id)
 
-        # 1. SYSTEM PROMPT (TOTO JE MOZOG AI)
-        system_content = f"""
-        You are a strict code mentor. The student is working on "{task.title}".
-        Student's code:
-        {task.input_code}
+        student_code = data.get('student_code', '').strip()
 
-        INSTRUCTIONS:
-        1. Analyze the code logic in English.
-        2. Identify the bug but DO NOT fix it for the student.
-        3. Provide a helpful hint using the Socratic method (ask questions).
-        4. **OUTPUT THE FINAL RESPONSE IN SLOVAK LANGUAGE ONLY.**
-        """
+        # 1. SYSTEM PROMPT (TOTO JE MOZOG AI)
+        student_code_section = (
+            f"\n\nStudent's current attempt:\n{student_code}"
+            if student_code
+            else "\n\n(The student has not written any code yet.)"
+        )
+        system_content = f"""You are a strict code mentor. The student is working on a refactoring task titled "{task.title}".
+
+Task description: {task.description}
+
+Original code to refactor:
+{task.input_code}
+{student_code_section}
+
+INSTRUCTIONS:
+- Compare the student's current attempt against the original code and the task description.
+- Identify what the student is doing wrong or what they haven't addressed yet.
+- Do NOT reveal the solution or rewrite the code for the student.
+- Give a short, targeted hint (2-3 sentences) using the Socratic method — point out a specific issue and ask a guiding question.
+- If the student has made progress, acknowledge it briefly before pointing to the next issue.
+- Respond in English."""
 
         # 2. Zostavenie správ pre Ollama Chat API
         messages_payload = []
@@ -522,10 +671,7 @@ def chat_with_ai(request, task_id):
     
 
 def query_ollama_chat(messages, model="llama3"):
-    """
-    Odosiela konverzáciu na Ollama API.
-    Toto nahrádza ten dlhý try-except blok vo vnútri funkcií.
-    """
+
     try:
         url = "http://localhost:11434/api/chat"
         data = {
@@ -574,32 +720,46 @@ def extract_json_from_text(text):
 
 def parse_ai_response_custom(text):
     """
-    Parsuje text z AI, ktorý je rozdelený vlastnými značkami (===TITLE=== atď.).
-    Odolné voči chybám v JSONe.
+    Parses AI response split by custom markers (===TITLE=== etc.).
+    Handles both ===CODE=== and ===BUGGY_CODE=== as input_code,
+    and ===SOLUTION=== as solution_code.
     """
     data = {}
     markers = {
-        "title": "===TITLE===",
-        "description": "===DESCRIPTION===",
-        "input_code": "===CODE===",
-        "expected_output": "===TESTS==="
+        "title":         "===TITLE===",
+        "description":   "===DESCRIPTION===",
+        "input_code":    "===BUGGY_CODE===" if "===BUGGY_CODE===" in text else "===CODE===",
+        "expected_output": "===TESTS===",
+        "solution_code": "===SOLUTION===",
     }
-    
+
+    all_marker_strings = list(markers.values())
+
     for key, marker in markers.items():
-        if marker in text:
-            start = text.find(marker) + len(marker)
-            content = text[start:]
-            
-            next_marker_pos = len(text)
-            for m in markers.values():
-                pos = content.find(m)
-                if pos != -1 and pos < next_marker_pos:
-                    next_marker_pos = pos
-            
-            clean_content = content[:next_marker_pos].strip()
-            for lang in ['', 'python', 'cpp', 'java', 'c++']:
-                clean_content = clean_content.replace(f"```{lang}", "").replace("```", "")
-            
-            data[key] = clean_content.strip()
+        if marker not in text:
+            continue
+        start = text.find(marker) + len(marker)
+        content = text[start:]
+
+        next_marker_pos = len(content)
+        for m in all_marker_strings:
+            pos = content.find(m)
+            if pos != -1 and pos < next_marker_pos:
+                next_marker_pos = pos
+
+        clean_content = content[:next_marker_pos].strip()
+        for lang_tag in ['python', 'cpp', 'java', 'c++', '']:
+            clean_content = clean_content.replace(f"```{lang_tag}", "").replace("```", "")
+
+        data[key] = clean_content.strip()
+
+    # Fallback: if title wasn't produced by the AI, extract the first short
+    # non-empty, non-marker line from the response as the title.
+    if not data.get('title'):
+        for line in text.splitlines():
+            line = line.strip()
+            if line and not line.startswith('=') and len(line) < 120:
+                data['title'] = line
+                break
 
     return data

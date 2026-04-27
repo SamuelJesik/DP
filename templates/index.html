@@ -1,15 +1,252 @@
-<!-- myapp/templates/index.html -->
-
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Úvodná Stránka{% endblock %}
+{% block title %}Home{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ── Hero ─────────────────────────────────────────────────────────── */
+    .hero {
+        text-align: center;
+        padding: 60px 20px 40px;
+    }
+    .hero h1 {
+        font-size: 2rem;
+        color: #1a3a7c;
+        margin-bottom: 10px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+    .hero p {
+        color: #555;
+        font-size: 1.05rem;
+        margin-bottom: 28px;
+        max-width: 520px;
+        margin-left: auto;
+        margin-right: auto;
+        line-height: 1.6;
+    }
+    .hero-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .btn-primary {
+        padding: 11px 28px;
+        background: #1976d2;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .btn-primary:hover { background: #1256a0; }
+
+    /* ── Progress bar ─────────────────────────────────────────────────── */
+    .progress-section {
+        max-width: 520px;
+        margin: 0 auto 48px;
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 20px 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 10px;
+    }
+    .progress-label {
+        font-weight: 700;
+        color: #1a3a7c;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .progress-count {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #1976d2;
+    }
+    .progress-bar-bg {
+        height: 10px;
+        background: #e9ecef;
+        border-radius: 99px;
+        overflow: hidden;
+    }
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #1976d2, #42a5f5);
+        border-radius: 99px;
+        transition: width 0.6s ease;
+    }
+    .progress-sub {
+        margin-top: 8px;
+        font-size: 0.82rem;
+        color: #888;
+    }
+
+    /* ── Task type cards ──────────────────────────────────────────────── */
+    .cards-section {
+        max-width: 900px;
+        margin: 0 auto 60px;
+        padding: 0 20px;
+    }
+    .cards-section h2 {
+        text-align: center;
+        font-size: 1.15rem;
+        color: #2c3e50;
+        font-weight: 700;
+        margin-bottom: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+    .type-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+    }
+    .type-card {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 20px 18px;
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .type-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.09);
+        border-color: var(--card-color);
+    }
+    .type-card-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: var(--card-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--card-color);
+    }
+    .type-card-name {
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: var(--card-color);
+    }
+    .type-card-desc {
+        font-size: 0.82rem;
+        color: #666;
+        line-height: 1.45;
+    }
+    .type-card-count {
+        font-size: 0.78rem;
+        color: #aaa;
+        margin-top: auto;
+        padding-top: 8px;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .card-refactoring    { --card-color: #1a56db; --card-bg: #e8f0fe; }
+    .card-error          { --card-color: #c81e1e; --card-bg: #fde8e8; }
+    .card-test           { --card-color: #057a55; --card-bg: #def7ec; }
+    .card-extension      { --card-color: #7e3af2; --card-bg: #f3e8ff; }
+</style>
+{% endblock %}
 
 {% block content %}
-    <div class="homepage">
+<div>
 
-        <h1>Vitajte vo webovej aplikácii </h1>
-        <p>Webové rozhranie vyvinuté pre výučbu programovania.</p>
+    <!-- Hero -->
+    <div class="hero">
+        <h1>Welcome, {{ request.user.get_full_name|default:request.user.username }}.</h1>
+        <p>Practice real-world coding skills through hands-on exercises. Refactor messy code, hunt down bugs, write tests, and extend existing programs.</p>
+        <div class="hero-actions">
+            <a href="{% url 'tasks' %}" class="btn-primary">
+                <i data-lucide="layout-grid" style="width:15px;height:15px;vertical-align:middle;margin-right:6px;"></i>
+                Browse Task Catalog
+            </a>
+        </div>
     </div>
 
+    <!-- Progress -->
+    {% if total_tasks %}
+    <div class="progress-section">
+        <div class="progress-header">
+            <span class="progress-label">
+                <i data-lucide="bar-chart-2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
+                Your Progress
+            </span>
+            <span class="progress-count">{{ submitted_count }} / {{ total_tasks }}</span>
+        </div>
+        <div class="progress-bar-bg">
+            <div class="progress-bar-fill" style="width: {% if total_tasks %}{% widthratio submitted_count total_tasks 100 %}{% else %}0{% endif %}%;"></div>
+        </div>
+        <div class="progress-sub">
+            {% if submitted_count == 0 %}
+                You haven't attempted any tasks yet — pick one below to get started.
+            {% elif submitted_count == total_tasks %}
+                You've attempted all available tasks.
+            {% else %}
+                {{ total_tasks|add:"-"|add:submitted_count }} tasks remaining.
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Task type cards -->
+    <div class="cards-section">
+        <h2>Exercise Types</h2>
+        <div class="type-cards">
+
+            <a href="{% url 'tasks' %}?filter=refactoring" class="type-card card-refactoring">
+                <div class="type-card-icon">
+                    <i data-lucide="code-2" style="width:18px;height:18px;"></i>
+                </div>
+                <div class="type-card-name">Refactoring</div>
+                <div class="type-card-desc">Clean up messy, hard-to-read code while keeping behaviour identical.</div>
+                <div class="type-card-count">{{ type_counts.refactoring }} task{{ type_counts.refactoring|pluralize }}</div>
+            </a>
+
+            <a href="{% url 'tasks' %}?filter=error_detection" class="type-card card-error">
+                <div class="type-card-icon">
+                    <i data-lucide="bug" style="width:18px;height:18px;"></i>
+                </div>
+                <div class="type-card-name">Error Detection</div>
+                <div class="type-card-desc">Find and fix the bugs hidden in broken code snippets.</div>
+                <div class="type-card-count">{{ type_counts.error_detection }} task{{ type_counts.error_detection|pluralize }}</div>
+            </a>
+
+            <a href="{% url 'tasks' %}?filter=test_writing" class="type-card card-test">
+                <div class="type-card-icon">
+                    <i data-lucide="flask-conical" style="width:18px;height:18px;"></i>
+                </div>
+                <div class="type-card-name">Test Writing</div>
+                <div class="type-card-desc">Write unit tests that catch a known bug and pass on a correct solution.</div>
+                <div class="type-card-count">{{ type_counts.test_writing }} task{{ type_counts.test_writing|pluralize }}</div>
+            </a>
+
+            <a href="{% url 'tasks' %}?filter=code_extension" class="type-card card-extension">
+                <div class="type-card-icon">
+                    <i data-lucide="puzzle" style="width:18px;height:18px;"></i>
+                </div>
+                <div class="type-card-name">Code Extension</div>
+                <div class="type-card-desc">Add new features or functionality to an existing codebase.</div>
+                <div class="type-card-count">{{ type_counts.code_extension }} task{{ type_counts.code_extension|pluralize }}</div>
+            </a>
+
+        </div>
+    </div>
+
+</div>
 {% endblock %}

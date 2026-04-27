@@ -18,6 +18,7 @@ urlpatterns = [
     path('hodnotenie/', views.rating_view, name='rating_view'),
     path('get-tasks-for-student/<int:student_id>/', views.get_tasks_for_student, name='get_tasks_for_student'),
     path('students/<int:user_id>/tasks/<int:task_id>/', views.task_detail_view, name='task_detail_admin'),
+    path('tasks/<int:task_id>/toggle-tests/', views.toggle_show_tests, name='toggle_show_tests'),
     path('api/generate-task/', views.generate_task_assignment, name='generate_task_ai'),
     path('api/get-hint/<int:task_id>/', views.get_task_hint, name='get_task_hint'),
     path('api/chat-ai/<int:task_id>/', views.chat_with_ai, name='chat_with_ai'),

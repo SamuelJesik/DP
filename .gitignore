@@ -11,3 +11,10 @@
 
 #/test_directory/*
 #!/test_directory/.gitkeep
+
+
+/*.pyc
+/__pycache__/
+
+
+/venv/

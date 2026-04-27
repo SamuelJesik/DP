@@ -1,64 +1,283 @@
 {% extends 'base.html' %}
-
 {% load static %}
 
 {% block content %}
 <div class="content">
-  <h2>Hodnotenie študentov</h2>
-  <ul class="rating-grid">
-    {% for student in students %}
-  <div class="student-container">
-    <div class="student-info">
-      <p>Meno: {{ student.username }}</p>
-      <p>E-mail: {{ student.email }}</p>
-      <button class="show-tasks-btn" data-user-id="{{ student.id }}">Zobraziť úlohy</button>
-    </div>
-    <ul class="tasks-list" style="display:none;"></ul>
-  </div>
-{% endfor %}
 
-  </ul>
+  <div class="rating-page-header">
+    <h2>Student Ratings</h2>
+    <div class="rating-stats-bar">
+      <span class="stat-pill"><i data-lucide="users" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>{{ students|length }} students</span>
+      <span class="stat-pill"><i data-lucide="clipboard-list" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>{{ total_tasks }} tasks</span>
+    </div>
+  </div>
+
+  <div class="rating-search-bar">
+    <input type="text" id="student-search" placeholder="Search by name or email…" autocomplete="off">
+  </div>
+
+  <table class="students-table" id="students-table">
+    <thead>
+      <tr>
+        <th style="width:32px;"></th>
+        <th>Username</th>
+        <th>Email</th>
+        <th>Submissions</th>
+        <th>Last Active</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for student in students %}
+      <tr class="student-row" data-user-id="{{ student.id }}"
+          data-search="{{ student.username|lower }} {{ student.email|lower }}">
+        <td class="expand-cell">
+          <span class="expand-icon">▶</span>
+        </td>
+        <td class="student-name">{{ student.username }}</td>
+        <td class="student-email">{{ student.email|default:"—" }}</td>
+        <td>
+          {% if student.submission_count > 0 %}
+            <span class="badge badge-active">{{ student.submission_count }}</span>
+          {% else %}
+            <span class="badge badge-none">0</span>
+          {% endif %}
+        </td>
+        <td class="last-active">
+          {% if student.last_submission %}
+            {{ student.last_submission|date:"d M Y" }}
+          {% else %}
+            <span style="color:#aaa;">No submissions</span>
+          {% endif %}
+        </td>
+      </tr>
+      <tr class="tasks-row" id="tasks-row-{{ student.id }}" style="display:none;">
+        <td colspan="5">
+          <div class="tasks-expanded">
+            <span class="tasks-loading">Loading tasks…</span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p id="no-results" style="display:none; text-align:center; color:#888; margin-top:20px;">
+    No students match your search.
+  </p>
+
 </div>
 
+<style>
+  .rating-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .rating-stats-bar {
+    display: flex;
+    gap: 10px;
+  }
+
+  .stat-pill {
+    background: #e8f0fe;
+    color: #1a56db;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .rating-search-bar {
+    margin-bottom: 16px;
+  }
+
+  #student-search {
+    width: 100%;
+    max-width: 400px;
+    padding: 9px 14px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  #student-search:focus {
+    border-color: #1a56db;
+    box-shadow: 0 0 0 2px rgba(26,86,219,0.15);
+  }
+
+  .students-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+
+  .students-table thead th {
+    background: #1f2a44;
+    color: #fff;
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+
+  .student-row {
+    cursor: pointer;
+    border-bottom: 1px solid #e8e8e8;
+    transition: background 0.15s;
+  }
+
+  .student-row:hover {
+    background: #f0f4ff;
+  }
+
+  .student-row.open {
+    background: #e8f0fe;
+    font-weight: 600;
+  }
+
+  .student-row td {
+    padding: 10px 14px;
+    vertical-align: middle;
+  }
+
+  .expand-cell {
+    text-align: center;
+    color: #888;
+  }
+
+  .expand-icon {
+    display: inline-block;
+    transition: transform 0.2s;
+    font-size: 0.75rem;
+  }
+
+  .student-row.open .expand-icon {
+    transform: rotate(90deg);
+  }
+
+  .badge {
+    display: inline-block;
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .badge-active {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .badge-none {
+    background: #f0f0f0;
+    color: #999;
+  }
+
+  .tasks-row td {
+    padding: 0;
+    background: #f7f9ff;
+    border-bottom: 2px solid #c5d3f0;
+  }
+
+  .tasks-expanded {
+    padding: 14px 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .tasks-loading {
+    color: #888;
+    font-style: italic;
+    font-size: 0.9rem;
+  }
+
+  .task-chip {
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    text-decoration: none;
+    background: #fff;
+    border: 1px solid #b0c4f0;
+    color: #1a3a7c;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+
+  .task-chip:hover {
+    background: #1a56db;
+    color: #fff;
+    border-color: #1a56db;
+  }
+
+  .last-active {
+    font-size: 0.88rem;
+    color: #555;
+  }
+</style>
+
 <script>
-    document.querySelectorAll('.show-tasks-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const userId = this.getAttribute('data-user-id');
-            const studentContainer = this.closest('.student-container');
-            const tasksList = studentContainer.querySelector('.tasks-list');
+  // ── Search ──────────────────────────────────────────────────────────────────
+  const searchInput = document.getElementById('student-search');
+  searchInput.addEventListener('input', function () {
+    const q = this.value.toLowerCase().trim();
+    let visible = 0;
+    document.querySelectorAll('.student-row').forEach(row => {
+      const match = !q || row.dataset.search.includes(q);
+      const tasksRow = document.getElementById('tasks-row-' + row.dataset.userId);
+      row.style.display = match ? '' : 'none';
+      if (tasksRow) tasksRow.style.display = (match && row.classList.contains('open')) ? '' : 'none';
+      if (match) visible++;
+    });
+    document.getElementById('no-results').style.display = visible === 0 ? 'block' : 'none';
+  });
 
-            console.log("Button for user ID " + userId + " clicked.");
+  // ── Expand / collapse ───────────────────────────────────────────────────────
+  document.querySelectorAll('.student-row').forEach(row => {
+    row.addEventListener('click', function () {
+      const userId = this.dataset.userId;
+      const tasksRow = document.getElementById('tasks-row-' + userId);
+      const isOpen = this.classList.contains('open');
 
-            if (tasksList.style.display === 'none' || tasksList.style.display === '') {
-                const url = `/myapp/get-tasks-for-student/${userId}/`;
-                console.log("Fetching tasks from URL: ", url);
-                fetch(url)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok: ' + response.statusText);
-                        }
-                        console.log("Response received.");
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log("Data received: ", data);
-                        tasksList.innerHTML = ''; 
-                        data.tasks.forEach(task => {
-                  
-                            tasksList.innerHTML += `<li><a href="/myapp/students/${userId}/tasks/${task.id}/">${task.title}</a></li>`;
-                        });
-                        tasksList.style.display = 'block'; 
-                        console.log("Tasks displayed.");
-                    })
-                    .catch(error => {
-                        console.error('Fetch error:', error);
-                    });
-            } else {
-                tasksList.style.display = 'none'; 
-                console.log("Tasks hidden.");
-            }
+      if (isOpen) {
+        this.classList.remove('open');
+        tasksRow.style.display = 'none';
+        return;
+      }
+
+      this.classList.add('open');
+      tasksRow.style.display = '';
+
+      const expandedDiv = tasksRow.querySelector('.tasks-expanded');
+      if (expandedDiv.dataset.loaded) return;   // already fetched
+
+      fetch(`/myapp/get-tasks-for-student/${userId}/`)
+        .then(r => r.json())
+        .then(data => {
+          expandedDiv.dataset.loaded = '1';
+          if (data.tasks.length === 0) {
+            expandedDiv.innerHTML = '<span style="color:#aaa;font-style:italic;">No tasks available.</span>';
+            return;
+          }
+          expandedDiv.innerHTML = data.tasks.map(task =>
+            `<a class="task-chip" href="/myapp/students/${userId}/tasks/${task.id}/">
+              ${task.title}
+             </a>`
+          ).join('');
+        })
+        .catch(() => {
+          expandedDiv.innerHTML = '<span style="color:red;">Failed to load tasks.</span>';
         });
     });
+  });
 </script>
 
 {% endblock %}

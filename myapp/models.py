@@ -24,12 +24,22 @@ LANGUAGE_CHOICES = [
     ('java', 'Java'),
 ]
 
+TASK_TYPE_CHOICES = [
+    ('refactoring', 'Refactoring'),
+    ('error_detection', 'Error Detection'),
+    ('test_writing', 'Test Writing'),
+    ('code_extension', 'Code Extension'),
+]
+
 class RefactoringTask(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
     language = models.CharField(max_length=10, choices=LANGUAGE_CHOICES, default='python')
-    input_code = models.TextField(help_text="Pôvodný kód na refaktorizáciu vložte sem.")
-    expected_output = models.TextField(help_text="Unit testy ktoré budú spúštané na kód (testovací súbor treba pridať manuálne.).", null=True, blank=True)
+    task_type = models.CharField(max_length=20, choices=TASK_TYPE_CHOICES, default='refactoring')
+    input_code = models.TextField(help_text="Original code (buggy or spaghetti) shown to the student.")
+    expected_output = models.TextField(help_text="Unit tests run against the student's submitted code.", null=True, blank=True)
+    solution_code = models.TextField(help_text="Correct solution — used only for test_writing tasks to validate student tests.", null=True, blank=True)
+    show_tests = models.BooleanField(default=True, help_text="If unchecked, students cannot see the unit tests panel for this task.")
     code_file = models.FileField(upload_to='uploads/', null=True, blank=True)
 
     def __str__(self):
