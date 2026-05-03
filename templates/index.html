@@ -92,6 +92,69 @@
         color: #888;
     }
 
+    /* ── Score card ───────────────────────────────────────────────────── */
+    .score-section {
+        max-width: 520px;
+        margin: 0 auto 32px;
+    }
+    .score-card {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 20px 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    .score-ring {
+        flex-shrink: 0;
+        width: 72px;
+        height: 72px;
+        position: relative;
+    }
+    .score-ring svg { transform: rotate(-90deg); }
+    .score-ring-label {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        line-height: 1.1;
+    }
+    .score-ring-num {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #1a3a7c;
+    }
+    .score-ring-denom {
+        font-size: 0.65rem;
+        color: #aaa;
+        font-weight: 600;
+    }
+    .score-info { flex: 1; min-width: 0; }
+    .score-info-title {
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: #1a3a7c;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 4px;
+    }
+    .score-info-sub { font-size: 0.83rem; color: #666; line-height: 1.4; }
+    .score-dots {
+        display: flex; gap: 4px; margin-top: 10px; flex-wrap: wrap;
+    }
+    .score-dot {
+        width: 22px; height: 22px; border-radius: 4px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.65rem; font-weight: 700;
+    }
+    .score-dot-filled { background: #1976d2; color: #fff; }
+    .score-dot-empty  { background: #f0f0f0; color: #ccc; }
+    .score-none { color: #aaa; font-style: italic; font-size: 0.88rem; }
+
     /* ── Task type cards ──────────────────────────────────────────────── */
     .cards-section {
         max-width: 900px;
@@ -204,6 +267,61 @@
     </div>
     {% endif %}
 
+    <!-- Score card -->
+    <div class="score-section">
+      <div class="score-card">
+        {% if avg_rating %}
+          {% with pct=avg_rating|floatformat:0 %}
+          <div class="score-ring">
+            <svg width="72" height="72" viewBox="0 0 72 72">
+              <circle cx="36" cy="36" r="28" fill="none" stroke="#e9ecef" stroke-width="7"/>
+              <circle cx="36" cy="36" r="28" fill="none" stroke="#1976d2" stroke-width="7"
+                stroke-dasharray="175.9"
+                stroke-linecap="round"
+                id="score-arc"/>
+            </svg>
+            <div class="score-ring-label">
+              <span class="score-ring-num">{{ avg_rating }}</span>
+              <span class="score-ring-denom">/ 10</span>
+            </div>
+          </div>
+          {% endwith %}
+          <div class="score-info">
+            <div class="score-info-title">
+              <i data-lucide="star" style="width:13px;height:13px;vertical-align:middle;margin-right:4px;"></i>Your Score
+            </div>
+            <div class="score-info-sub">Average across {{ rated_task_count }} rated task{{ rated_task_count|pluralize }}</div>
+            <div class="score-dots">
+              {% for i in "1234567890" %}
+                {% with n=forloop.counter %}
+                  {% if n <= avg_rating %}
+                    <div class="score-dot score-dot-filled">{{ n }}</div>
+                  {% else %}
+                    <div class="score-dot score-dot-empty">{{ n }}</div>
+                  {% endif %}
+                {% endwith %}
+              {% endfor %}
+            </div>
+          </div>
+        {% else %}
+          <div class="score-ring">
+            <svg width="72" height="72" viewBox="0 0 72 72">
+              <circle cx="36" cy="36" r="28" fill="none" stroke="#e9ecef" stroke-width="7"/>
+            </svg>
+            <div class="score-ring-label">
+              <span class="score-ring-num" style="font-size:1rem;color:#ccc;">—</span>
+            </div>
+          </div>
+          <div class="score-info">
+            <div class="score-info-title">
+              <i data-lucide="star" style="width:13px;height:13px;vertical-align:middle;margin-right:4px;"></i>Your Score
+            </div>
+            <div class="score-none">No ratings yet — submit tasks to get feedback from your teacher.</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
     <!-- Task type cards -->
     <div class="cards-section">
         <h2>Exercise Types</h2>
@@ -249,4 +367,13 @@
     </div>
 
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var arc = document.getElementById('score-arc');
+  if (arc) {
+    var score = {{ avg_rating|default:"0" }};
+    arc.style.strokeDashoffset = 175.9 - (175.9 * score / 10);
+  }
+});
+</script>
 {% endblock %}

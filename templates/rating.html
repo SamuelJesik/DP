@@ -12,8 +12,32 @@
     </div>
   </div>
 
-  <div class="rating-search-bar">
-    <input type="text" id="student-search" placeholder="Search by name or email…" autocomplete="off">
+  <div class="rating-filters">
+    <input type="text" id="student-search" placeholder="Search student…" autocomplete="off">
+
+    <div class="filter-group">
+      <span class="filter-label">Language</span>
+      <button class="filter-btn active" data-filter="lang" data-value="">All</button>
+      <button class="filter-btn" data-filter="lang" data-value="python">Python</button>
+      <button class="filter-btn" data-filter="lang" data-value="cpp">C++</button>
+      <button class="filter-btn" data-filter="lang" data-value="java">Java</button>
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">Type</span>
+      <button class="filter-btn active" data-filter="type" data-value="">All</button>
+      <button class="filter-btn" data-filter="type" data-value="refactoring">Refactoring</button>
+      <button class="filter-btn" data-filter="type" data-value="error_detection">Error Detection</button>
+      <button class="filter-btn" data-filter="type" data-value="test_writing">Test Writing</button>
+      <button class="filter-btn" data-filter="type" data-value="code_extension">Code Extension</button>
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">Submissions</span>
+      <button class="filter-btn active" data-filter="sub" data-value="">All</button>
+      <button class="filter-btn" data-filter="sub" data-value="submitted">Submitted</button>
+      <button class="filter-btn" data-filter="sub" data-value="none">Not submitted</button>
+    </div>
   </div>
 
   <table class="students-table" id="students-table">
@@ -41,6 +65,9 @@
           {% else %}
             <span class="badge badge-none">0</span>
           {% endif %}
+          {% if student.rated_count > 0 %}
+            <span class="badge badge-rated" title="{{ student.rated_count }} task(s) rated">{{ student.rated_count }} rated</span>
+          {% endif %}
         </td>
         <td class="last-active">
           {% if student.last_submission %}
@@ -52,7 +79,7 @@
       </tr>
       <tr class="tasks-row" id="tasks-row-{{ student.id }}" style="display:none;">
         <td colspan="5">
-          <div class="tasks-expanded">
+          <div class="tasks-expanded" data-user-id="{{ student.id }}">
             <span class="tasks-loading">Loading tasks…</span>
           </div>
         </td>
@@ -67,217 +94,684 @@
 
 </div>
 
+<!-- ── Grading side panel ─────────────────────────────────────────────────── -->
+<div id="grade-overlay" class="grade-overlay" style="display:none;"></div>
+<div id="grade-panel" class="grade-panel">
+  <div class="gp-header">
+    <div class="gp-header-top">
+      <div class="gp-nav">
+        <button id="gp-prev-btn" class="gp-nav-btn" title="Previous student (←)">&#8592;</button>
+        <button id="gp-next-btn-h" class="gp-nav-btn" title="Next student (→)">&#8594;</button>
+      </div>
+      <div class="gp-header-actions">
+        <a id="gp-full-link" href="#" class="gp-full-link">
+          <i data-lucide="external-link" style="width:13px;height:13px;vertical-align:middle;margin-right:4px;"></i>Full page
+        </a>
+        <button id="gp-close" class="gp-close" title="Close">✕</button>
+      </div>
+    </div>
+    <div class="gp-title-block">
+      <span id="gp-student-name" class="gp-student"></span>
+      <span id="gp-task-title" class="gp-task"></span>
+    </div>
+  </div>
+
+  <div id="gp-body" class="gp-body">
+    <div class="gp-loading">Loading…</div>
+  </div>
+</div>
+
 <style>
+  /* ── Page layout ──────────────────────────────────────────────── */
   .rating-page-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-    gap: 10px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
   }
-
-  .rating-stats-bar {
-    display: flex;
-    gap: 10px;
-  }
-
+  .rating-stats-bar { display: flex; gap: 10px; }
   .stat-pill {
-    background: #e8f0fe;
-    color: #1a56db;
-    border-radius: 20px;
-    padding: 4px 14px;
-    font-size: 0.9rem;
-    font-weight: 600;
+    background: #e8f0fe; color: #1a56db; border-radius: 20px;
+    padding: 4px 14px; font-size: 0.9rem; font-weight: 600;
   }
-
-  .rating-search-bar {
-    margin-bottom: 16px;
+  /* ── Filter bar ───────────────────────────────────────────────── */
+  .rating-filters {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
+    margin-bottom: 16px; padding: 12px 16px;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
   }
-
   #student-search {
-    width: 100%;
-    max-width: 400px;
-    padding: 9px 14px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 1rem;
-    outline: none;
-    transition: border-color 0.2s;
+    flex: 1; min-width: 160px; max-width: 240px; padding: 7px 12px;
+    border: 1px solid #ccc; border-radius: 6px; font-size: 0.9rem;
+    outline: none; transition: border-color 0.2s;
   }
-
-  #student-search:focus {
-    border-color: #1a56db;
-    box-shadow: 0 0 0 2px rgba(26,86,219,0.15);
+  #student-search:focus { border-color: #1a56db; box-shadow: 0 0 0 2px rgba(26,86,219,0.12); }
+  .filter-group { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .filter-label {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em;
+    text-transform: uppercase; color: #94a3b8; margin-right: 2px;
   }
-
-  .students-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.95rem;
+  .filter-btn {
+    padding: 4px 11px; border-radius: 20px; border: 1px solid #d0d0d0;
+    background: #fff; color: #555; font-size: 0.78rem; font-weight: 600;
+    cursor: pointer; transition: background 0.13s, border-color 0.13s, color 0.13s;
   }
+  .filter-btn:hover { background: #e8f0fe; border-color: #1a56db; color: #1a56db; }
+  .filter-btn.active { background: #1f2a44; border-color: #1f2a44; color: #fff; }
 
+  /* ── Table ────────────────────────────────────────────────────── */
+  .students-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
   .students-table thead th {
-    background: #1f2a44;
-    color: #fff;
-    padding: 10px 14px;
-    text-align: left;
-    font-weight: 600;
-    letter-spacing: 0.03em;
+    background: #1f2a44; color: #fff; padding: 10px 14px;
+    text-align: left; font-weight: 600; letter-spacing: 0.03em;
   }
+  .student-row { cursor: pointer; border-bottom: 1px solid #e8e8e8; transition: background 0.15s; }
+  .student-row:hover { background: #f0f4ff; }
+  .student-row.open { background: #e8f0fe; font-weight: 600; }
+  .student-row td { padding: 10px 14px; vertical-align: middle; }
+  .expand-cell { text-align: center; color: #888; }
+  .expand-icon { display: inline-block; transition: transform 0.2s; font-size: 0.75rem; }
+  .student-row.open .expand-icon { transform: rotate(90deg); }
+  .badge { display: inline-block; border-radius: 12px; padding: 2px 10px; font-size: 0.82rem; font-weight: 700; }
+  .badge-active { background: #d4edda; color: #155724; }
+  .badge-none { background: #f0f0f0; color: #999; }
+  .badge-rated { background: #e0e7ff; color: #3730a3; margin-left: 4px; }
+  .tasks-row td { padding: 0; background: #f7f9ff; border-bottom: 2px solid #c5d3f0; }
+  .tasks-expanded { padding: 14px 24px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .tasks-loading { color: #888; font-style: italic; font-size: 0.9rem; }
+  .last-active { font-size: 0.88rem; color: #555; }
 
-  .student-row {
-    cursor: pointer;
-    border-bottom: 1px solid #e8e8e8;
-    transition: background 0.15s;
-  }
-
-  .student-row:hover {
-    background: #f0f4ff;
-  }
-
-  .student-row.open {
-    background: #e8f0fe;
-    font-weight: 600;
-  }
-
-  .student-row td {
-    padding: 10px 14px;
-    vertical-align: middle;
-  }
-
-  .expand-cell {
-    text-align: center;
-    color: #888;
-  }
-
-  .expand-icon {
-    display: inline-block;
-    transition: transform 0.2s;
-    font-size: 0.75rem;
-  }
-
-  .student-row.open .expand-icon {
-    transform: rotate(90deg);
-  }
-
-  .badge {
-    display: inline-block;
-    border-radius: 12px;
-    padding: 2px 10px;
-    font-size: 0.82rem;
-    font-weight: 700;
-  }
-
-  .badge-active {
-    background: #d4edda;
-    color: #155724;
-  }
-
-  .badge-none {
-    background: #f0f0f0;
-    color: #999;
-  }
-
-  .tasks-row td {
-    padding: 0;
-    background: #f7f9ff;
-    border-bottom: 2px solid #c5d3f0;
-  }
-
-  .tasks-expanded {
-    padding: 14px 24px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .tasks-loading {
-    color: #888;
-    font-style: italic;
-    font-size: 0.9rem;
-  }
-
+  /* ── Task chips ───────────────────────────────────────────────── */
   .task-chip {
-    display: inline-block;
-    padding: 5px 14px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    text-decoration: none;
-    background: #fff;
-    border: 1px solid #b0c4f0;
-    color: #1a3a7c;
-    transition: background 0.15s, border-color 0.15s;
-    white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px 4px 5px; border-radius: 20px; font-size: 0.82rem;
+    background: #fff; border: 1px solid #d0d8f0; color: #1a3a7c;
+    cursor: pointer; white-space: nowrap;
+    transition: background 0.13s, border-color 0.13s, color 0.13s, opacity 0.13s;
+    user-select: none;
+  }
+  .task-chip:hover { background: #1a56db; color: #fff; border-color: #1a56db; }
+  .task-chip:hover .chip-lang { background: rgba(255,255,255,0.2); color: #fff; }
+  .task-chip:hover .chip-test { color: #fff; }
+  .task-chip.rated { border-color: #a3d4b0; }
+  .task-chip.no-sub { opacity: 0.45; border-style: dashed; }
+  .task-chip.no-sub:hover { opacity: 1; }
+
+  .chip-lang {
+    font-size: 0.65rem; font-weight: 800; letter-spacing: 0.04em;
+    padding: 1px 6px; border-radius: 10px; flex-shrink: 0;
+    text-transform: uppercase;
+  }
+  .chip-lang-python  { background: #e8f5e9; color: #2e7d32; }
+  .chip-lang-cpp     { background: #e3f2fd; color: #1565c0; }
+  .chip-lang-java    { background: #fff3e0; color: #e65100; }
+
+  .chip-title { flex: 1; }
+
+  .chip-test { font-size: 0.8rem; font-weight: 700; flex-shrink: 0; }
+  .chip-test-pass { color: #16a34a; }
+  .chip-test-fail { color: #dc2626; }
+
+  /* ── Overlay ──────────────────────────────────────────────────── */
+  .grade-overlay {
+    position: fixed; top: 56px; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 900; backdrop-filter: blur(2px);
   }
 
-  .task-chip:hover {
-    background: #1a56db;
-    color: #fff;
-    border-color: #1a56db;
+  /* ── Grade panel ──────────────────────────────────────────────── */
+  .grade-panel {
+    position: fixed; top: 56px; right: 0; bottom: 0;
+    width: 600px; max-width: 95vw;
+    background: #fff; z-index: 901;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.18);
+    display: flex; flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+  }
+  .grade-panel.open { transform: translateX(0); }
+
+  .gp-header {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 12px 16px 14px; background: #1f2a44; color: #fff; flex-shrink: 0;
+  }
+  .gp-header-top {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .gp-nav { display: flex; gap: 4px; }
+  .gp-nav-btn {
+    width: 30px; height: 30px; border-radius: 6px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.7); font-size: 1rem; cursor: pointer; line-height: 1;
+    transition: background 0.13s, color 0.13s; display: flex; align-items: center; justify-content: center;
+  }
+  .gp-nav-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+  .gp-nav-btn:disabled { opacity: 0.25; cursor: default; }
+  .gp-title-block { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .gp-student {
+    font-size: 1.05rem; font-weight: 700; color: #fff;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .gp-task {
+    font-size: 0.82rem; color: #94a3b8; font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .gp-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .gp-full-link {
+    display: inline-flex; align-items: center; font-size: 0.78rem; color: #94a3b8;
+    text-decoration: none; padding: 3px 8px; border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.15); transition: color 0.15s, border-color 0.15s;
+  }
+  .gp-full-link:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
+  .gp-close {
+    background: none; border: none; color: rgba(255,255,255,0.6); font-size: 1.1rem;
+    cursor: pointer; padding: 2px 6px; border-radius: 4px; line-height: 1;
+    transition: color 0.15s, background 0.15s;
+  }
+  .gp-close:hover { color: #fff; background: rgba(255,255,255,0.1); }
+
+  .gp-body {
+    flex: 1; overflow-y: auto; padding: 20px 18px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  .gp-loading { color: #888; font-style: italic; text-align: center; margin-top: 40px; }
+
+  /* ── Panel sections ───────────────────────────────────────────── */
+  .gp-section-title {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #94a3b8; margin-bottom: 8px;
   }
 
-  .last-active {
-    font-size: 0.88rem;
-    color: #555;
+  .gp-coderun {
+    background: #0f172a; border-radius: 8px; overflow: hidden; font-size: 0.8rem;
+  }
+  .gp-coderun-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 12px; background: #1e293b; color: #64748b; font-size: 0.72rem;
+  }
+  .gp-code-block {
+    padding: 10px 12px; color: #e2e8f0; font-family: monospace;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .gp-output-block {
+    padding: 8px 12px; color: #86efac; font-family: monospace;
+    white-space: pre-wrap; font-size: 0.78rem; border-top: 1px solid #1e293b;
+  }
+  .gp-tests-block {
+    padding: 8px 12px; color: #fde68a; font-family: monospace;
+    white-space: pre-wrap; font-size: 0.78rem; border-top: 1px solid #1e293b;
+  }
+  .gp-test-badge {
+    font-size: 0.72rem; font-weight: 700; padding: 2px 8px;
+    border-radius: 10px; letter-spacing: 0.03em;
+  }
+  .gp-test-pass   { background: rgba(34,197,94,0.2);  color: #86efac; }
+  .gp-test-fail   { background: rgba(239,68,68,0.2);  color: #fca5a5; }
+  .gp-test-neutral { background: rgba(255,255,255,0.08); color: #94a3b8; }
+  .gp-no-runs { color: #aaa; font-style: italic; font-size: 0.88rem; }
+
+  .gp-file-list { display: flex; flex-direction: column; gap: 4px; }
+  .gp-file-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.85rem; color: #1a56db; padding: 4px 0;
+  }
+  .gp-file-item a { color: inherit; text-decoration: none; }
+  .gp-file-item a:hover { text-decoration: underline; }
+  .gp-file-meta { color: #aaa; font-size: 0.75rem; margin-left: auto; }
+
+  .gp-ratings-list { display: flex; flex-direction: column; gap: 8px; }
+  .gp-rating-item {
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px;
+  }
+  .gp-rating-score {
+    display: inline-block; background: #1f2a44; color: #fff;
+    border-radius: 4px; padding: 1px 8px; font-weight: 700; font-size: 0.85rem; margin-bottom: 4px;
+  }
+  .gp-rating-feedback { font-size: 0.88rem; color: #444; margin-top: 2px; }
+  .gp-rating-date { font-size: 0.72rem; color: #aaa; margin-top: 4px; }
+
+  /* ── Rating form ──────────────────────────────────────────────── */
+  .gp-form { display: flex; flex-direction: column; gap: 12px; }
+  .gp-score-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .score-btn {
+    width: 36px; height: 36px; border-radius: 6px; border: 1px solid #d0d0d0;
+    background: #f8f8f8; color: #333; font-weight: 700; font-size: 0.9rem;
+    cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .score-btn:hover { background: #e8f0fe; border-color: #1a56db; color: #1a56db; }
+  .score-btn.selected { background: #1f2a44; border-color: #1f2a44; color: #fff; }
+  .gp-feedback-input {
+    width: 100%; padding: 9px 12px; border: 1px solid #ccc; border-radius: 6px;
+    font-size: 0.9rem; resize: vertical; min-height: 70px; box-sizing: border-box;
+    font-family: inherit; outline: none; transition: border-color 0.2s;
+  }
+  .gp-feedback-input:focus { border-color: #1a56db; box-shadow: 0 0 0 2px rgba(26,86,219,0.12); }
+  .gp-submit-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 9px 22px; background: #1f2a44; color: #fff; border: none;
+    border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    transition: background 0.15s; align-self: flex-end;
+  }
+  .gp-submit-btn:hover { background: #2d3f62; }
+  .gp-submit-btn:disabled { background: #aaa; cursor: not-allowed; }
+  .gp-form-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; flex-wrap: wrap; margin-top: 4px;
+  }
+  .gp-kbd-hint {
+    font-size: 0.72rem; color: #aaa; display: flex; align-items: center; gap: 2px; flex-wrap: wrap;
+  }
+  kbd {
+    display: inline-block; padding: 1px 5px; border-radius: 3px;
+    border: 1px solid #d0d0d0; background: #f5f5f5; font-size: 0.7rem;
+    font-family: monospace; color: #555; line-height: 1.4;
+  }
+  .gp-submit-ok {
+    display: inline-flex; align-items: center; gap: 6px; color: #15803d;
+    font-weight: 600; font-size: 0.9rem; padding: 4px 0;
   }
 </style>
 
 <script>
-  // ── Search ──────────────────────────────────────────────────────────────────
-  const searchInput = document.getElementById('student-search');
-  searchInput.addEventListener('input', function () {
-    const q = this.value.toLowerCase().trim();
-    let visible = 0;
-    document.querySelectorAll('.student-row').forEach(row => {
-      const match = !q || row.dataset.search.includes(q);
-      const tasksRow = document.getElementById('tasks-row-' + row.dataset.userId);
-      row.style.display = match ? '' : 'none';
-      if (tasksRow) tasksRow.style.display = (match && row.classList.contains('open')) ? '' : 'none';
-      if (match) visible++;
-    });
-    document.getElementById('no-results').style.display = visible === 0 ? 'block' : 'none';
-  });
+const CSRF = '{{ csrf_token }}';
 
-  // ── Expand / collapse ───────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ── Active filters ──────────────────────────────────────────────────────────
+const activeFilters = { lang: '', type: '', sub: '' };
+
+function applyFilters() {
+  const q = document.getElementById('student-search').value.toLowerCase().trim();
+  let visible = 0;
   document.querySelectorAll('.student-row').forEach(row => {
-    row.addEventListener('click', function () {
-      const userId = this.dataset.userId;
-      const tasksRow = document.getElementById('tasks-row-' + userId);
-      const isOpen = this.classList.contains('open');
-
-      if (isOpen) {
-        this.classList.remove('open');
-        tasksRow.style.display = 'none';
-        return;
+    const match = !q || row.dataset.search.includes(q);
+    const tasksRow = document.getElementById('tasks-row-' + row.dataset.userId);
+    row.style.display = match ? '' : 'none';
+    if (tasksRow) {
+      if (!match) { tasksRow.style.display = 'none'; return; }
+      if (row.classList.contains('open')) {
+        tasksRow.style.display = '';
+        filterChips(tasksRow.querySelector('.tasks-expanded'));
       }
+    }
+    if (match) visible++;
+  });
+  document.getElementById('no-results').style.display = visible === 0 ? 'block' : 'none';
+}
 
-      this.classList.add('open');
-      tasksRow.style.display = '';
+function filterChips(container) {
+  if (!container || !container.dataset.loaded) return;
+  let anyVisible = false;
+  container.querySelectorAll('.task-chip').forEach(chip => {
+    const langOk = !activeFilters.lang || chip.dataset.lang === activeFilters.lang;
+    const typeOk = !activeFilters.type || chip.dataset.taskType === activeFilters.type;
+    const subOk  = !activeFilters.sub
+      || (activeFilters.sub === 'submitted' && chip.dataset.hasSub === '1')
+      || (activeFilters.sub === 'none'      && chip.dataset.hasSub === '0');
+    chip.style.display = (langOk && typeOk && subOk) ? '' : 'none';
+    if (langOk && typeOk && subOk) anyVisible = true;
+  });
+  let noMsg = container.querySelector('.chips-no-match');
+  if (!anyVisible) {
+    if (!noMsg) {
+      noMsg = document.createElement('span');
+      noMsg.className = 'chips-no-match';
+      noMsg.style.cssText = 'color:#aaa;font-style:italic;font-size:0.85rem;';
+      noMsg.textContent = 'No tasks match the current filters.';
+      container.appendChild(noMsg);
+    }
+  } else if (noMsg) noMsg.remove();
+}
 
-      const expandedDiv = tasksRow.querySelector('.tasks-expanded');
-      if (expandedDiv.dataset.loaded) return;   // already fetched
+// ── Filter buttons ──────────────────────────────────────────────────────────
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    const group = this.dataset.filter;
+    document.querySelectorAll(`.filter-btn[data-filter="${group}"]`).forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    activeFilters[group] = this.dataset.value;
+    document.querySelectorAll('.tasks-expanded[data-loaded]').forEach(filterChips);
+  });
+});
 
-      fetch(`/myapp/get-tasks-for-student/${userId}/`)
+// ── Search ──────────────────────────────────────────────────────────────────
+document.getElementById('student-search').addEventListener('input', applyFilters);
+
+// ── Expand / collapse student row ───────────────────────────────────────────
+document.querySelectorAll('.student-row').forEach(row => {
+  row.addEventListener('click', function () {
+    const userId = this.dataset.userId;
+    const tasksRow = document.getElementById('tasks-row-' + userId);
+    const isOpen = this.classList.contains('open');
+
+    if (isOpen) {
+      this.classList.remove('open');
+      tasksRow.style.display = 'none';
+      return;
+    }
+
+    this.classList.add('open');
+    tasksRow.style.display = '';
+
+    const expandedDiv = tasksRow.querySelector('.tasks-expanded');
+    if (expandedDiv.dataset.loaded) return;
+
+    fetch(`/myapp/get-tasks-for-student/${userId}/`)
+      .then(r => r.json())
+      .then(data => {
+        expandedDiv.dataset.loaded = '1';
+        if (data.tasks.length === 0) {
+          expandedDiv.innerHTML = '<span style="color:#aaa;font-style:italic;">No tasks available.</span>';
+          return;
+        }
+        expandedDiv.innerHTML = buildChipsHtml(data.tasks, userId);
+        bindChipClicks(expandedDiv);
+        filterChips(expandedDiv);
+      })
+      .catch(() => {
+        expandedDiv.innerHTML = '<span style="color:red;">Failed to load tasks.</span>';
+      });
+  });
+});
+
+// ── Chip click → open panel ─────────────────────────────────────────────────
+function bindChipClicks(container) {
+  container.querySelectorAll('.task-chip').forEach(chip => {
+    chip.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openPanel(this.dataset.userId, this.dataset.taskId, this.dataset.taskTitle, this);
+    });
+  });
+}
+
+// ── Panel state ──────────────────────────────────────────────────────────────
+const panel     = document.getElementById('grade-panel');
+const overlay   = document.getElementById('grade-overlay');
+const gpBody    = document.getElementById('gp-body');
+let activeChip    = null;
+let selectedScore = null;
+let currentUserId = null;
+let currentTaskId = null;
+
+// ── Open panel ───────────────────────────────────────────────────────────────
+function openPanel(userId, taskId, taskTitle, chip) {
+  document.getElementById('gp-student-name').textContent =
+    chip.closest('.tasks-row').previousElementSibling.querySelector('.student-name').textContent;
+  document.getElementById('gp-task-title').textContent = taskTitle;
+  document.getElementById('gp-full-link').href = `/myapp/students/${userId}/tasks/${taskId}/`;
+
+  gpBody.innerHTML = '<div class="gp-loading">Loading…</div>';
+  overlay.style.display = '';
+  panel.classList.add('open');
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  activeChip    = chip;
+  selectedScore = null;
+  currentUserId = userId;
+  currentTaskId = taskId;
+
+  fetch(`/myapp/api/student-panel/${userId}/${taskId}/`)
+    .then(r => r.json())
+    .then(data => renderPanel(data, userId, taskId))
+    .catch(() => { gpBody.innerHTML = '<div class="gp-loading" style="color:red;">Failed to load.</div>'; });
+}
+
+// ── Close panel ──────────────────────────────────────────────────────────────
+function closePanel() {
+  panel.classList.remove('open');
+  overlay.style.display = 'none';
+  activeChip = currentUserId = currentTaskId = null;
+}
+
+document.getElementById('gp-close').addEventListener('click', closePanel);
+overlay.addEventListener('click', closePanel);
+
+// ── Student navigation (shared) ──────────────────────────────────────────────
+function navigateStudent(direction) {
+  if (!currentTaskId) return;
+  const allRows = Array.from(document.querySelectorAll('.student-row'))
+    .filter(r => r.style.display !== 'none');
+  const currentIdx = allRows.findIndex(r => r.dataset.userId === String(currentUserId));
+  const candidates = direction === 1
+    ? allRows.slice(currentIdx + 1)
+    : allRows.slice(0, currentIdx).reverse();
+
+  function tryRow(rows, idx) {
+    if (idx >= rows.length) {
+      if (direction === 1)
+        gpBody.innerHTML = '<div class="gp-loading" style="color:#16a34a;text-align:center;margin-top:30px;font-weight:600;">✓ All students done!</div>';
+      return;
+    }
+    const row = rows[idx];
+    const nextUserId = row.dataset.userId;
+    const tasksRow = document.getElementById('tasks-row-' + nextUserId);
+    const expandedDiv = tasksRow.querySelector('.tasks-expanded');
+
+    function findAndOpen() {
+      const chip = expandedDiv.querySelector(`.task-chip[data-task-id="${currentTaskId}"]`);
+      if (chip) {
+        row.classList.add('open');
+        tasksRow.style.display = '';
+        openPanel(nextUserId, currentTaskId, chip.dataset.taskTitle, chip);
+      } else {
+        tryRow(rows, idx + 1);
+      }
+    }
+
+    if (expandedDiv.dataset.loaded) {
+      findAndOpen();
+    } else {
+      fetch(`/myapp/get-tasks-for-student/${nextUserId}/`)
         .then(r => r.json())
         .then(data => {
           expandedDiv.dataset.loaded = '1';
-          if (data.tasks.length === 0) {
-            expandedDiv.innerHTML = '<span style="color:#aaa;font-style:italic;">No tasks available.</span>';
-            return;
-          }
-          expandedDiv.innerHTML = data.tasks.map(task =>
-            `<a class="task-chip" href="/myapp/students/${userId}/tasks/${task.id}/">
-              ${task.title}
-             </a>`
-          ).join('');
+          expandedDiv.innerHTML = buildChipsHtml(data.tasks, nextUserId);
+          bindChipClicks(expandedDiv);
+          filterChips(expandedDiv);
+          findAndOpen();
         })
-        .catch(() => {
-          expandedDiv.innerHTML = '<span style="color:red;">Failed to load tasks.</span>';
-        });
+        .catch(() => tryRow(rows, idx + 1));
+    }
+  }
+  tryRow(candidates, 0);
+}
+
+// ── Chip HTML builder (shared) ───────────────────────────────────────────────
+function buildChipsHtml(tasks, userId) {
+  const langLabels = { python: 'PY', cpp: 'C++', java: 'JAV' };
+  return tasks.map(task => {
+    const testBadge = task.test_status === 'pass'
+      ? `<span class="chip-test chip-test-pass">✓</span>`
+      : task.test_status === 'fail'
+      ? `<span class="chip-test chip-test-fail">✗</span>`
+      : '';
+    return `<div class="task-chip ${task.has_submission ? 'has-sub' : 'no-sub'}${task.is_rated ? ' rated' : ''}"
+      data-user-id="${userId}" data-task-id="${task.id}"
+      data-task-title="${escHtml(task.title)}"
+      data-lang="${task.language}" data-task-type="${task.task_type}"
+      data-has-sub="${task.has_submission ? 1 : 0}">
+      <span class="chip-lang chip-lang-${task.language}">${langLabels[task.language] || task.language}</span>
+      <span class="chip-title">${escHtml(task.title)}</span>
+      ${testBadge}
+    </div>`;
+  }).join('');
+}
+
+// ── Wire header nav buttons ──────────────────────────────────────────────────
+document.getElementById('gp-prev-btn').addEventListener('click', () => navigateStudent(-1));
+document.getElementById('gp-next-btn-h').addEventListener('click', () => navigateStudent(1));
+
+// ── Keyboard shortcuts ───────────────────────────────────────────────────────
+document.addEventListener('keydown', function(e) {
+  if (!panel.classList.contains('open')) return;
+  if (document.activeElement && document.activeElement.id === 'gp-feedback') {
+    if (e.key === 'Escape') closePanel();
+    return;
+  }
+  if (e.key === 'Escape')    { closePanel(); return; }
+  if (/^[1-9]$/.test(e.key)){ selectScore(parseInt(e.key)); return; }
+  if (e.key === '0')         { selectScore(10); return; }
+  if (e.key === 'Enter' && selectedScore) {
+    const btn = document.getElementById('gp-submit-btn');
+    if (btn && !btn.disabled) btn.click();
+    return;
+  }
+  if (e.key === 'ArrowRight' || e.key === 'n') { navigateStudent(1);  return; }
+  if (e.key === 'ArrowLeft'  || e.key === 'p') { navigateStudent(-1); return; }
+});
+
+function selectScore(n) {
+  const btn = document.querySelector(`.score-btn[data-score="${n}"]`);
+  if (!btn) return;
+  document.querySelectorAll('.score-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedScore = n;
+  const submitBtn = document.getElementById('gp-submit-btn');
+  if (submitBtn) submitBtn.disabled = false;
+}
+
+// ── Render panel ─────────────────────────────────────────────────────────────
+function renderPanel(data, userId, taskId) {
+  let html = '';
+
+  // ── Code runs ──
+  html += `<div><div class="gp-section-title">Latest submission</div>`;
+  if (data.coderuns.length === 0) {
+    html += `<div class="gp-no-runs">No code runs yet.</div>`;
+  } else {
+    const cr = data.coderuns[0];
+    const passed = cr.tests_output && /passed|ok/i.test(cr.tests_output) && !/failed|error/i.test(cr.tests_output);
+    const failed = cr.tests_output && /failed|error/i.test(cr.tests_output);
+    html += `<div class="gp-coderun">
+      <div class="gp-coderun-meta"><span>${cr.created_at}</span>${cr.tests_output
+        ? `<span class="gp-test-badge ${passed ? 'gp-test-pass' : failed ? 'gp-test-fail' : 'gp-test-neutral'}">${passed ? '✓ Tests passed' : failed ? '✗ Tests failed' : 'Tests ran'}</span>`
+        : '<span class="gp-test-badge gp-test-neutral">No tests</span>'
+      }</div>
+      <div class="gp-code-block">${escHtml(cr.code)}</div>`;
+    if (cr.output) html += `<div class="gp-output-block">${escHtml(cr.output)}</div>`;
+    if (cr.tests_output) html += `<div class="gp-tests-block">${escHtml(cr.tests_output)}</div>`;
+    html += `</div>`;
+    if (data.coderuns.length > 1)
+      html += `<div style="font-size:0.75rem;color:#aaa;margin-top:5px;">${data.coderuns.length - 1} earlier run(s) on full page.</div>`;
+  }
+  html += `</div>`;
+
+  // ── Uploaded files ──
+  if (data.uploaded_files.length > 0) {
+    html += `<div><div class="gp-section-title">Uploaded files</div><div class="gp-file-list">`;
+    data.uploaded_files.forEach(f => {
+      html += `<div class="gp-file-item">
+        <i data-lucide="file-code" style="width:13px;height:13px;flex-shrink:0;"></i>
+        <a href="/media/${f.file}" download>${escHtml(f.name)}</a>
+        <span class="gp-file-meta">${f.uploaded_at}</span>
+      </div>`;
     });
+    html += `</div></div>`;
+  }
+
+  // ── Past ratings ──
+  if (data.ratings.length > 0) {
+    html += `<div><div class="gp-section-title">Previous ratings</div><div class="gp-ratings-list">`;
+    data.ratings.forEach(r => {
+      html += `<div class="gp-rating-item">
+        <span class="gp-rating-score">${r.rating}/10</span>
+        ${r.feedback ? `<div class="gp-rating-feedback">${escHtml(r.feedback)}</div>` : ''}
+        <div class="gp-rating-date">${r.created_at}</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // ── Rating form ──
+  html += `<div>
+    <div class="gp-section-title">Add rating</div>
+    <div class="gp-form" id="gp-form">
+      <div>
+        <div style="font-size:0.82rem;color:#555;margin-bottom:6px;">Score (1–10)</div>
+        <div class="gp-score-row" id="gp-score-row">
+          ${[1,2,3,4,5,6,7,8,9,10].map(n =>
+            `<button type="button" class="score-btn" data-score="${n}">${n}</button>`
+          ).join('')}
+        </div>
+      </div>
+      <textarea class="gp-feedback-input" id="gp-feedback" placeholder="Feedback (optional)…"></textarea>
+      <div class="gp-form-footer">
+        <span class="gp-kbd-hint">
+          <kbd>1</kbd>–<kbd>0</kbd> score &nbsp;·&nbsp; <kbd>Enter</kbd> submit &nbsp;·&nbsp; <kbd>←</kbd><kbd>→</kbd> navigate &nbsp;·&nbsp; <kbd>Esc</kbd> close
+        </span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="gp-submit-ok" class="gp-submit-ok" style="display:none;">
+            <i data-lucide="check-circle" style="width:15px;height:15px;"></i>Saved!
+          </span>
+          <button type="button" class="gp-submit-btn" id="gp-submit-btn" disabled>
+            <i data-lucide="star" style="width:14px;height:14px;"></i>Submit Rating
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  gpBody.innerHTML = html;
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  // Score button selection
+  document.querySelectorAll('.score-btn').forEach(btn => {
+    btn.addEventListener('click', function () { selectScore(parseInt(this.dataset.score)); });
   });
+
+  // Submit
+  document.getElementById('gp-submit-btn').addEventListener('click', function () {
+    if (!selectedScore) return;
+    this.disabled = true;
+    const feedback = document.getElementById('gp-feedback').value.trim();
+    fetch(`/myapp/api/student-panel/${userId}/${taskId}/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({ rating: selectedScore, feedback })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        document.getElementById('gp-submit-ok').style.display = 'inline-flex';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        if (activeChip) activeChip.classList.add('rated');
+        document.querySelectorAll('.score-btn').forEach(b => b.classList.remove('selected'));
+        document.getElementById('gp-feedback').value = '';
+        selectedScore = null;
+        setTimeout(() => {
+          document.getElementById('gp-submit-ok').style.display = 'none';
+        }, 2500);
+        // Update rated badge in the student row
+        updateRatedBadge(userId);
+      }
+    })
+    .catch(() => { this.disabled = false; });
+  });
+
+}
+
+// ── Update rated badge after submit ──────────────────────────────────────────
+function updateRatedBadge(userId) {
+  const row = document.querySelector(`.student-row[data-user-id="${userId}"]`);
+  if (!row) return;
+  let badge = row.querySelector('.badge-rated');
+  if (badge) {
+    const n = parseInt(badge.textContent) + 1;
+    badge.textContent = n + ' rated';
+  } else {
+    const td = row.querySelector('td:nth-child(4)');
+    if (td) {
+      badge = document.createElement('span');
+      badge.className = 'badge badge-rated';
+      badge.title = 'tasks rated';
+      badge.textContent = '1 rated';
+      td.appendChild(badge);
+    }
+  }
+}
 </script>
 
 {% endblock %}

@@ -1,20 +1,26 @@
+# --- User uploads & sandbox state (run-time data) ---
 /media/uploads/*
 !/media/uploads/.gitkeep
-
 /test_directory
 /uploads/
 
+# --- Logs & local settings ---
 /debug.log
+/.claude/
+/CLAUDE.md
 
-#/templates/rating.html
-#/templates/task_detail_admin.html
-
-#/test_directory/*
-#!/test_directory/.gitkeep
-
-
-/*.pyc
-/__pycache__/
-
-
+# --- Python build artefacts ---
+*.pyc
+__pycache__/
 /venv/
+*.egg-info/
+
+# --- Diplomová práca (private text) ---
+/latex/
+/latex.zip
+
+# --- IDE ---
+.idea/
+.vscode/
+*.swp
+.DS_Store

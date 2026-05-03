@@ -1,8 +1,6 @@
-# myapp/urls.py
-
 from django.urls import path
 from . import views
-from .views import add_task, list_tasks,task_detail, index, register,run_code,get_tasks_for_student
+from .views import add_task, edit_task, list_tasks, task_detail, index, register, run_code, get_tasks_for_student, student_panel_api
 from django.contrib.auth.views import LoginView, LogoutView
 
 
@@ -11,6 +9,7 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(next_page='login'), name='logout'),
     path('', views.index, name='index'),
     path('tasks/add/', add_task, name='add_task'),
+    path('tasks/<int:task_id>/edit/', edit_task, name='edit_task'),
     path('tasks/', list_tasks, name='tasks'),
     path('tasks/<int:task_id>/', views.task_detail, name='task_detail'),
     path('register/', register, name='register'),
@@ -22,6 +21,7 @@ urlpatterns = [
     path('api/generate-task/', views.generate_task_assignment, name='generate_task_ai'),
     path('api/get-hint/<int:task_id>/', views.get_task_hint, name='get_task_hint'),
     path('api/chat-ai/<int:task_id>/', views.chat_with_ai, name='chat_with_ai'),
+    path('api/student-panel/<int:user_id>/<int:task_id>/', student_panel_api, name='student_panel_api'),
 
 
 

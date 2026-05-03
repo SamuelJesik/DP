@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-<h2 style="text-align:center; margin-top:30px;">Add New Task</h2>
+<h2 style="text-align:center; margin-top:30px;">{% if editing %}Edit Task: {{ task.title }}{% else %}Add New Task{% endif %}</h2>
 
 <div class="add_container">
 
@@ -109,21 +109,21 @@
     <div class="form-section-label">Language</div>
     <div class="language-selector">
       <label>
-        <input type="radio" name="language" value="python" class="lang-radio" checked>
+        <input type="radio" name="language" value="python" class="lang-radio" {% if not editing or task.language == 'python' %}checked{% endif %}>
         <div class="lang-label">
           <img src="{% static 'css/python.png' %}" alt="Python" class="lang-icon">
           <span>Python</span>
         </div>
       </label>
       <label>
-        <input type="radio" name="language" value="cpp" class="lang-radio">
+        <input type="radio" name="language" value="cpp" class="lang-radio" {% if editing and task.language == 'cpp' %}checked{% endif %}>
         <div class="lang-label">
           <img src="{% static 'css/c.png' %}" alt="C++" class="lang-icon">
           <span>C++</span>
         </div>
       </label>
       <label>
-        <input type="radio" name="language" value="java" class="lang-radio">
+        <input type="radio" name="language" value="java" class="lang-radio" {% if editing and task.language == 'java' %}checked{% endif %}>
         <div class="lang-label">
           <img src="{% static 'css/java.png' %}" alt="Java" class="lang-icon">
           <span>Java</span>
@@ -135,29 +135,30 @@
     <div class="form-section-label">Task Type</div>
     <div class="form-type-selector">
       <label class="form-type-option">
-        <input type="radio" name="task_type" value="refactoring" checked>
+        <input type="radio" name="task_type" value="refactoring" {% if not editing or task.task_type == 'refactoring' %}checked{% endif %}>
         <span>Refactoring</span>
       </label>
       <label class="form-type-option">
-        <input type="radio" name="task_type" value="error_detection">
+        <input type="radio" name="task_type" value="error_detection" {% if editing and task.task_type == 'error_detection' %}checked{% endif %}>
         <span>Error Detection</span>
       </label>
       <label class="form-type-option">
-        <input type="radio" name="task_type" value="test_writing">
+        <input type="radio" name="task_type" value="test_writing" {% if editing and task.task_type == 'test_writing' %}checked{% endif %}>
         <span>Test Writing</span>
       </label>
       <label class="form-type-option">
-        <input type="radio" name="task_type" value="code_extension">
+        <input type="radio" name="task_type" value="code_extension" {% if editing and task.task_type == 'code_extension' %}checked{% endif %}>
         <span>Code Extension</span>
       </label>
     </div>
 
     <label for="id_title">Title</label>
-    <input type="text" id="id_title" name="title" placeholder="e.g. Fix the Factorial">
+    <input type="text" id="id_title" name="title" placeholder="e.g. Fix the Factorial"
+           value="{% if editing %}{{ task.title }}{% endif %}">
 
     <label for="id_description">Description</label>
     <textarea id="id_description" name="description"
-              placeholder="Describe what the student needs to do…" rows="4"></textarea>
+              placeholder="Describe what the student needs to do…" rows="4">{% if editing %}{{ task.description }}{% endif %}</textarea>
 
     <div class="field-with-regen">
       <label for="id_input_code" id="input-code-label">Input Code</label>
@@ -165,7 +166,7 @@
     </div>
     <textarea id="id_input_code" name="input_code"
               placeholder="Paste the code here…" rows="10"
-              style="font-family:monospace; background:#f8f9fa;"></textarea>
+              style="font-family:monospace; background:#f8f9fa;">{% if editing %}{{ task.input_code }}{% endif %}</textarea>
 
     <!-- Tests — hidden for test_writing -->
     <div id="tests-field-group">
@@ -175,7 +176,7 @@
       </div>
       <textarea id="id_expected_output" name="expected_output"
                 placeholder="import unittest…" rows="6"
-                style="font-family:monospace; background:#f8f9fa;"></textarea>
+                style="font-family:monospace; background:#f8f9fa;">{% if editing %}{{ task.expected_output }}{% endif %}</textarea>
     </div>
 
     <!-- Solution Code — shown only for test_writing -->
@@ -183,18 +184,18 @@
       <label for="id_solution_code">Solution Code <span style="font-weight:normal; color:#888;">(correct version — used to validate student tests)</span></label>
       <textarea id="id_solution_code" name="solution_code"
                 placeholder="Paste the correct solution here…" rows="10"
-                style="font-family:monospace; background:#f8f9fa;"></textarea>
+                style="font-family:monospace; background:#f8f9fa;">{% if editing %}{{ task.solution_code }}{% endif %}</textarea>
     </div>
 
     <div style="margin: 12px 0;">
       <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:normal;">
-        <input type="checkbox" name="show_tests" id="id_show_tests" checked style="width:16px; height:16px;">
+        <input type="checkbox" name="show_tests" id="id_show_tests" {% if not editing or task.show_tests %}checked{% endif %} style="width:16px; height:16px;">
         <span>Show unit tests to students</span>
       </label>
       <small style="color:#888; margin-left:24px;">Uncheck to hide the tests panel on the task page.</small>
     </div>
 
-    <button type="submit" id="task_add_button">Save Task</button>
+    <button type="submit" id="task_add_button">{% if editing %}Save Changes{% else %}Save Task{% endif %}</button>
   </form>
 
 </div><!-- /add_container -->
@@ -324,11 +325,6 @@ function fillForm(data) {
   var typeRadio = document.querySelector(`input[name="task_type"][value="${data.task_type}"]`);
   if (typeRadio) { typeRadio.checked = true; syncFormTypeUI(); }
 
-  // Sync language radio if task_type is test_writing → force python
-  if (data.task_type === 'test_writing') {
-    document.querySelector('input[name="language"][value="python"]').checked = true;
-  }
-
   // Scroll to form
   document.querySelector('.task-form').scrollIntoView({ behavior: 'smooth' });
 }
@@ -356,8 +352,18 @@ document.getElementById('form-regen-tests-btn').addEventListener('click', functi
   }, 3500);
 });
 
-// ── Django messages ────────────────────────────────────────────────────────
+// ── On load: sync UI state ─────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function() {
+  syncFormTypeUI();
+
+  {% if editing %}
+  // Sync AI panel type buttons to match the task's current type
+  var currentType = '{{ task.task_type }}';
+  document.querySelectorAll('.ai-type-btn').forEach(b => b.classList.remove('active'));
+  var matchingBtn = document.querySelector(`.ai-type-btn[data-type="${currentType}"]`);
+  if (matchingBtn) matchingBtn.classList.add('active');
+  {% endif %}
+
   {% for message in messages %}
   Swal.fire({
     title: "{{ message.tags|title }}",

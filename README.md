@@ -1,38 +1,91 @@
-# Diplomová práca: Využitie UI v procese výuky programovania
----
+# CodeLab — AI mentor pre výučbu programovania
 
-## Prehľad
+Lokálne spustiteľný webový systém na vzdelávanie v programovaní s integrovaným AI mentorom v sokratovskom móde. Implementačný výstup diplomovej práce na FMFI UK Bratislava.
 
-Webová aplikácia umožňuje študentom:
-- písanie a spúšťanie kódu (Python, C++, Java) v izolovanom Docker-sandboxe  
-- generovanie a hodnotenie testov  
-- refaktoring a analýzu AI-generovaného kódu  
+## Hlavné funkcie
 
----
+- **Bezpečné spúšťanie kódu** v Docker sandboxe pre Python, C++ a Javu
+- **AI mentor** v sokratovskom móde (lokálna Llama 3.1 8B cez Ollama) — model vedie študenta otázkami namiesto priameho riešenia
+- **Štyri typy úloh** — písanie kódu, hľadanie chyby, písanie testov, refaktorizácia
+- **Automatické vyhodnocovanie** odovzdaní s porovnaním proti referenčnej implementácii
+- **Generátor úloh** poháňaný lokálnym LLM
+- **Bočný panel hodnotenia** s klávesovými skratkami pre efektívnu prácu učiteľa
+- **História spustení** každého študenta, hodnotenie 1–10 + komentár
 
-## Požiadavky
+## Architektúra
 
-- **Python** ≥ 3.9  
-- **Docker** & **Docker Compose** (len pre sandbox spúšťanie kódu)  
-- **PostgreSQL** + **pgAdmin** (lokálna inštalácia alebo cez Docker)  
-- PowerShell (Windows) alebo Bash (Linux/macOS)  
+- **Backend:** Django 5.2 + PostgreSQL
+- **Frontend:** Bootstrap 5 + Monaco Editor (vanilla JS, žiadny framework)
+- **Sandbox:** Docker kontajner (Python 3.9-slim + g++ + default-jdk)
+- **AI:** Ollama server s modelom Llama 3.1 8B, lokálne — bez závislosti na cloude
+- **Dáta:** všetko zostáva na fakultnom hardvéri (GDPR-friendly)
 
----
+## Inštalácia
 
-## Rýchly štart
+### Predpoklady
 
-1. **Skopírujte repozitár a zmeňte pracovný adresár**  
-  - cd C:\Users\<užívateľ>\Projects\DP
-   
-2. **Aktivujte virtuálne prostredie**
+- Python ≥ 3.9
+- PostgreSQL (lokálne alebo cez Docker)
+- Docker daemon (pre sandbox)
+- [Ollama](https://ollama.com/) s modelom `llama3` (`ollama pull llama3`)
 
-  - .\venv\Scripts\Activate.ps1   # Windows PowerShell
+### Krok za krokom
 
-3. **Spustite server**
- - python manage.py runserver
+```bash
+# 1. Klonovanie repa
+git clone https://github.com/SamuelJesik/DP.git
+cd DP
 
-4. **V prehliadači choďte na**
- - http://127.0.0.1:8000/myapp
+# 2. Virtuálne prostredie
+python -m venv venv
+# Windows:
+.\venv\Scripts\Activate.ps1
+# Linux/macOS:
+source venv/bin/activate
 
+# 3. Závislosti
+pip install -r requirements.txt
+
+# 4. Databáza (PostgreSQL musí bežať a databáza "DP" existovať)
+python manage.py migrate
+python manage.py createsuperuser
+
+# 5. Build Docker sandbox image
+docker build -t python-runner .
+
+# 6. Spustenie Ollama (v samostatnom termináli)
+ollama serve
+
+# 7. Django dev server
+python manage.py runserver
+```
+
+Aplikácia beží na <http://127.0.0.1:8000/myapp/>.
+
+## Roly
+
+- **Učiteľ (`is_superuser`)** — pridáva úlohy, generuje ich cez AI, hodnotí riešenia študentov cez bočný panel
+- **Študent** — rieši úlohy, používa AI mentora, dostáva spätnú väzbu a hodnotenie
+
+## Štruktúra projektu
+
+```
+manage.py              vstupný bod Django
+DP/                    konfigurácia projektu (settings, urls, wsgi)
+myapp/                 hlavná logika (models, views, urls, forms)
+templates/             HTML šablóny
+test_directory/        zdieľaný adresár medzi Django a Docker (run-time)
+Dockerfile             definícia sandbox image
+```
+
+## Limity
+
+- Aktuálne beží na Django dev serveri — produkčné nasadenie by vyžadovalo Gunicorn + Nginx
+- Latencia AI mentora bez GPU je 10–40 sekúnd; s GPU klesá pod 3 sekundy
+- Z taxonómie obranných mechanizmov je implementovaný iba **automatický test runner**; pokročilejšie moduly (behavior preservation checker, špecifikačný linter, multi-model verification) tvoria roadmap ďalšieho vývoja
+
+## Licencia a kontext
+
+Implementačný výstup diplomovej práce. Text práce, dotazníkové dáta a artefakty komparatívneho experimentu medzi LLM modelmi nie sú súčasťou tohto repozitára.
 
 © 2025/2026 Bc. Samuel Ješík — Fakulta matematiky, fyziky a informatiky, Univerzita Komenského v Bratislave

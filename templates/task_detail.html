@@ -2,12 +2,13 @@
 {% load static %} 
 
 {% block extra_head %}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
 
     <script>
         var readOnlyCode = `{{ task.input_code|escapejs }}`;
         var expectedOutput = `{{ task.expected_output|escapejs }}`;
         var taskType = "{{ task.task_type }}";
+        var taskLanguage = "{{ task.language }}";
     </script>
 
     <script type="text/javascript">
@@ -104,45 +105,6 @@
         #send-btn:hover { background-color: #218838; }
         #send-btn:disabled { background-color: #ccc; cursor: not-allowed; }
 
-        .admin-tests-toggle { margin-bottom: 8px; }
-        .admin-toggle-btn {
-            padding: 5px 14px !important;
-            border-radius: 4px !important;
-            border: none !important;
-            font-size: 0.85em !important;
-            font-weight: 600 !important;
-            cursor: pointer !important;
-            transition: opacity 0.2s !important;
-        }
-        .admin-toggle-btn.visible {
-            background-color: #28a745 !important;
-            color: white !important;
-        }
-        .admin-toggle-btn.hidden {
-            background-color: #dc3545 !important;
-            color: white !important;
-        }
-        .admin-toggle-btn:hover { opacity: 0.85 !important; }
-        .tests-hidden-msg {
-            color: #888;
-            font-style: italic;
-            font-size: 0.9em;
-            padding: 8px 0;
-        }
-
-        #toggle-ratings {
-            padding: 7px 16px;
-            background-color: #17a2b8;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            font-size: 0.9em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        #toggle-ratings:hover { background-color: #117a8b; }
-
         /* ── Test Writing result boxes ── */
         #test-writing-results { margin-top: 20px; }
         .tw-result-box {
@@ -183,30 +145,24 @@
         }
         .tw-error strong { color: #7f1d1d; }
 
-        #uploadBtn, #submitBtn {
-            padding: 7px 18px;
-            border: none;
-            border-radius: 5px;
-            font-size: 0.9em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        #uploadBtn {
-            background-color: #6c757d;
-            color: #fff;
-        }
-        #uploadBtn:hover { background-color: #565e64; }
-        #submitBtn {
-            background-color: #1976d2;
-            color: #fff;
-            margin-left: 6px;
-        }
-        #submitBtn:hover { background-color: #1256a0; }
     </style>
 {% endblock extra_head %}
 
 {% block content %}
+{% if request.user.is_superuser %}
+<div class="admin-task-toolbar">
+  <span class="admin-task-toolbar-label">Admin</span>
+  <a href="{% url 'edit_task' task.id %}" class="admin-toolbar-btn">
+    <i data-lucide="pencil" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Edit Task
+  </a>
+  <button id="admin-toggle-tests-btn"
+          class="admin-toolbar-btn admin-toggle-tests-pill {% if task.show_tests %}pill-visible{% else %}pill-hidden{% endif %}"
+          data-task-id="{{ task.id }}"
+          data-csrf="{{ csrf_token }}">
+    {% if task.show_tests %}<i data-lucide="eye" style="width:13px;height:13px;vertical-align:middle;margin-right:4px;"></i>Tests visible{% else %}<i data-lucide="eye-off" style="width:13px;height:13px;vertical-align:middle;margin-right:4px;"></i>Tests hidden{% endif %}
+  </button>
+</div>
+{% endif %}
 <div class="content">
     <h2>{{ task.title }}</h2>
 
@@ -235,7 +191,9 @@
             <button id="send-btn"><i data-lucide="send" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Send</button>
         </div>
     </div>
-    <button id="toggle-ratings" class="btn btn-info">Zobraziť hodnotenie</button>
+    <button id="toggle-ratings" class="btn-ghost">
+        <i data-lucide="star" style="width:14px;height:14px;"></i>Zobraziť hodnotenie
+    </button>
 
     <div id="ratings-container" style="display: none;">
         <h3>Vaše hodnotenie:</h3>
@@ -252,47 +210,43 @@
 
     <div class="editor-container">
         <div class="editor-wrapper editor-wrapper--readonly">
-            {% if task.task_type == 'test_writing' %}
-                <h2 class="editor-header">Buggy Code (read-only)</h2>
-            {% else %}
-                <h2 class="editor-header">Original Code (read-only)</h2>
-            {% endif %}
+            <div class="editor-toolbar">
+                <h2 class="editor-header">
+                    {% if task.task_type == 'test_writing' %}Buggy Code (read-only)
+                    {% else %}Original Code (read-only){% endif %}
+                </h2>
+            </div>
             <div id="readonly-editor" class="ace-editor"></div>
         </div>
 
         <div class="editor-wrapper editor-wrapper--editable">
-            {% if task.task_type == 'test_writing' %}
-                <h2 class="editor-header">Your Tests</h2>
-            {% elif task.task_type == 'error_detection' %}
-                <h2 class="editor-header">Your Fix</h2>
-            {% elif task.task_type == 'code_extension' %}
-                <h2 class="editor-header">Your Extended Code</h2>
-            {% else %}
-                <h2 class="editor-header">Your Refactored Code</h2>
-            {% endif %}
+            <div class="editor-toolbar">
+                <h2 class="editor-header">
+                    {% if task.task_type == 'test_writing' %}Your Tests
+                    {% elif task.task_type == 'error_detection' %}Your Fix
+                    {% elif task.task_type == 'code_extension' %}Your Extended Code
+                    {% else %}Your Refactored Code{% endif %}
+                </h2>
+                <button id="run-code" class="run-button">
+                    <i data-lucide="play" style="width:13px;height:13px;"></i>Run
+                </button>
+            </div>
             <div id="editor" class="ace-editor"></div>
-            <button id="run-code" class="run-button">Run</button>
         </div>
     </div>
 
     {% if task.task_type != 'test_writing' %}
     <div class="editor-wrapper editor-wrapper--tests">
-        {% if request.user.is_superuser %}
-        <div class="admin-tests-toggle">
-            <button id="admin-toggle-tests-btn"
-                    class="admin-toggle-btn {% if task.show_tests %}visible{% else %}hidden{% endif %}"
-                    data-task-id="{{ task.id }}"
-                    data-csrf="{{ csrf_token }}">
-                {% if task.show_tests %}<i data-lucide="eye" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Tests visible to students{% else %}<i data-lucide="eye-off" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Tests hidden from students{% endif %}
-            </button>
-        </div>
-        {% endif %}
 
         {% if task.show_tests or request.user.is_superuser %}
-        <button class="tests-toggle-btn" id="toggle-tests-btn">Show Unit Tests ▼</button>
+        <button class="btn-ghost" id="toggle-tests-btn">
+            <i data-lucide="flask-conical" style="width:14px;height:14px;"></i>Show Unit Tests
+        </button>
         <div class="tests-panel" id="tests-panel">
             <div id="unit-tests-editor" class="ace-editor"></div>
-            <button id="show-results">Show Test Results</button>
+            <button id="show-results" class="btn-ghost" style="margin-top:8px;">
+                <i data-lucide="clipboard-list" style="width:14px;height:14px;"></i>Show Test Results
+            </button>
         </div>
         {% else %}
         <p class="tests-hidden-msg">Unit tests are hidden for this task.</p>
@@ -319,48 +273,95 @@
 
     <div id="testResultsModal" class="modal">
       <div class="modal-content">
-        <span class="close-button">×</span>
-        <h2>Výsledky Testov</h2>
-        <pre id="test-results-output"></pre>
+        <div class="modal-header">
+          <h2>
+            <i data-lucide="clipboard-list" style="width:16px;height:16px;"></i>
+            Test Results
+          </h2>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span id="modal-status-badge" class="modal-status-badge modal-status-none"></span>
+            <button class="close-button" id="modal-close-btn">✕</button>
+          </div>
+        </div>
+        <div class="modal-body" id="test-results-output"></div>
       </div>
     </div>
 
     <div class="form-container">
-        <form method="post" enctype="multipart/form-data">
-            <input type="file" id="fileInput" name="file" accept=".py" style="display:none;">
+        <form method="post" enctype="multipart/form-data" id="upload-form">
             {% csrf_token %}
-            <span id="file-chosen">Please choose a file.</span> 
-            <button type="button" id="uploadBtn">Choose File</button> 
-            <button type="submit" id="submitBtn">Upload</button>
+            <input type="file" id="fileInput" name="file"
+                   accept="{% if task.language == 'cpp' %}.cpp{% elif task.language == 'java' %}.java{% else %}.py{% endif %}"
+                   style="display:none;">
+            <div class="upload-zone" id="upload-zone">
+                <i data-lucide="upload" class="upload-zone-icon"></i>
+                <span id="file-chosen">
+                    Drop
+                    {% if task.language == 'cpp' %}.cpp{% elif task.language == 'java' %}.java{% else %}.py{% endif %}
+                    file or click to browse
+                </span>
+                <button type="submit" id="submitBtn" class="upload-submit-btn" disabled>
+                    <i data-lucide="upload-cloud" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Upload
+                </button>
+            </div>
         </form>
     </div>
 
-    {% for uploaded_file in uploaded_files %}
-    <div class="uploaded-file-item">
-        <p>{{ forloop.counter }}. File:
+    {% if uploaded_files %}
+    <div class="uploaded-files-section">
+        {% for uploaded_file in uploaded_files %}
+        <div class="uploaded-file-item">
+            <i data-lucide="file-code" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;color:#0056b3;"></i>
             <a href="{{ uploaded_file.file.url }}" class="uploaded-file-link" download="{{ uploaded_file.file.name }}">
                 {{ uploaded_file.file.name|cut:"uploads/" }}
             </a>
-        </p>
-        <p class="uploaded-file-info">Uploaded at: {{ uploaded_file.uploaded_at }}</p>
-    </div>
-    {% endfor %}
-
-    <div id="coderuns-list">
-    {% for coderun in coderuns %}
-    <div class="code-run-item">
-        <button class="toggle-details-btn">Detaily spustenia #{{ forloop.counter }}</button>
-        <div class="code-run-details" style="display: none;">
-            <pre>{{ coderun.code }}</pre>
-            <p>Output:</p>
-            <pre>{{ coderun.output }}</pre>
-            <p>Tests Output:</p>
-            <pre>{{ coderun.tests_output }}</pre>
-            <p class="code-run-info">Created At: {{ coderun.created_at }}</p>
+            <span class="uploaded-file-info">· {{ uploaded_file.uploaded_at|date:"d.m.Y H:i" }}</span>
         </div>
+        {% endfor %}
     </div>
-    {% endfor %}
+    {% endif %}
+
+    {% if coderuns %}
+    <div id="coderuns-list">
+      <div class="run-history-header">
+        <i data-lucide="history" style="width:14px;height:14px;"></i>Run History
+      </div>
+      {% for coderun in coderuns %}
+      <div class="run-item">
+        <button class="run-toggle" onclick="toggleRun(this)">
+          <span class="run-toggle-arrow">▶</span>
+          <span class="run-toggle-label">Run #{{ forloop.counter }}</span>
+          <span class="run-toggle-date">{{ coderun.created_at|date:"d M Y H:i" }}</span>
+          {% if coderun.tests_output %}
+            {% if "failed" in coderun.tests_output|lower or "error" in coderun.tests_output|lower %}
+              <span class="run-badge run-badge-fail">✗ Failed</span>
+            {% else %}
+              <span class="run-badge run-badge-pass">✓ Passed</span>
+            {% endif %}
+          {% endif %}
+        </button>
+        <div class="run-details">
+          <div class="run-code-block">
+            <div class="run-block-label">Code</div>
+            <pre class="run-pre run-pre-code">{{ coderun.code }}</pre>
+          </div>
+          {% if coderun.output %}
+          <div class="run-code-block">
+            <div class="run-block-label">Output</div>
+            <pre class="run-pre run-pre-out">{{ coderun.output }}</pre>
+          </div>
+          {% endif %}
+          {% if coderun.tests_output %}
+          <div class="run-code-block">
+            <div class="run-block-label">Tests</div>
+            <pre class="run-pre {% if "failed" in coderun.tests_output|lower or "error" in coderun.tests_output|lower %}run-pre-fail{% else %}run-pre-pass{% endif %}">{{ coderun.tests_output }}</pre>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
     </div>
+    {% endif %}
 
 </div>
 
@@ -405,7 +406,7 @@
         chatWindow.appendChild(loadingDiv);
         chatWindow.scrollTop = chatWindow.scrollHeight;
 
-        const studentCode = ace.edit("editor").getValue();
+        const studentCode = editor.getValue();
 
         fetch(`/myapp/api/chat-ai/${taskId}/`, {
             method: 'POST',
@@ -454,6 +455,15 @@
 </script>
 
 <script>
+    function toggleRun(btn) {
+        var details = btn.nextElementSibling;
+        var isOpen = btn.classList.contains('open');
+        btn.classList.toggle('open', !isOpen);
+        details.classList.toggle('open', !isOpen);
+    }
+</script>
+
+<script>
     window.addEventListener('DOMContentLoaded', (event) => {
       {% for message in messages %}
       Swal.fire({
@@ -465,73 +475,5 @@
       {% endfor %}
     });
 
-    document.addEventListener('DOMContentLoaded', function() {
-        var adminToggleBtn = document.getElementById('admin-toggle-tests-btn');
-        if (adminToggleBtn) {
-            adminToggleBtn.addEventListener('click', function() {
-                var taskId = this.dataset.taskId;
-                var csrf   = this.dataset.csrf;
-                fetch(`/myapp/tasks/${taskId}/toggle-tests/`, {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/json' }
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.show_tests) {
-                        adminToggleBtn.innerHTML = '<i data-lucide="eye" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Tests visible to students';
-                        adminToggleBtn.classList.remove('hidden');
-                        adminToggleBtn.classList.add('visible');
-                    } else {
-                        adminToggleBtn.innerHTML = '<i data-lucide="eye-off" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Tests hidden from students';
-                        adminToggleBtn.classList.remove('visible');
-                        adminToggleBtn.classList.add('hidden');
-                    }
-                    if (typeof lucide !== 'undefined') lucide.createIcons();
-                })
-                .catch(() => alert('Failed to toggle test visibility.'));
-            });
-        }
-
-        var toggleTestsBtn = document.getElementById('toggle-tests-btn');
-        var testsPanel = document.getElementById('tests-panel');
-        if (toggleTestsBtn && testsPanel) {
-            toggleTestsBtn.addEventListener('click', function() {
-                var open = testsPanel.style.display === 'block';
-                testsPanel.style.display = open ? 'none' : 'block';
-                toggleTestsBtn.textContent = open ? 'Show Unit Tests ▼' : 'Hide Unit Tests ▲';
-                if (!open) {
-                    // Ace needs a resize signal when becoming visible
-                    var ed = ace.edit("unit-tests-editor");
-                    if (ed) ed.resize();
-                }
-            });
-        }
-
-        var container = document.getElementById('ratings-container');
-        if(container) {
-             container.style.maxHeight = '0px';
-             container.style.display = 'none';
-        }
-    
-        var toggleBtn = document.getElementById('toggle-ratings');
-        if(toggleBtn) {
-            toggleBtn.addEventListener('click', function() {
-                console.log('Kliknuté na tlačidlo "Zobraziť hodnotenia"');
-                if (container.style.display === 'none' || container.style.maxHeight === '0px') {
-                    container.style.display = 'block'; 
-                    setTimeout(() => {
-                        container.style.maxHeight = '5000px';
-                        container.style.padding = '20px';
-                    }, 10);
-                } else {
-                    container.style.maxHeight = '0px';
-                    container.style.padding = '0';
-                    setTimeout(() => {
-                        container.style.display = 'none';
-                    }, 500);
-                }
-            });
-        }
-    });
 </script>
 {% endblock %}
