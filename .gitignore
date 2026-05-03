@@ -6,8 +6,7 @@
 
 # --- Logs & local settings ---
 /debug.log
-/.claude/
-/CLAUDE.md
+
 
 # --- Python build artefacts ---
 *.pyc
