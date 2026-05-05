@@ -1,7 +1,8 @@
 # --- User uploads & sandbox state (run-time data) ---
 /media/uploads/*
 !/media/uploads/.gitkeep
-/test_directory
+/test_directory/*
+!/test_directory/.gitkeep
 /uploads/
 
 # --- Logs & local settings ---
@@ -17,6 +18,11 @@ __pycache__/
 # --- Diplomová práca (private text) ---
 /latex/
 /latex.zip
+latex\ (2).zip
+
+# --- Thesis utility scripts (one-off) ---
+/fix_dashes*.py
+/check_abbrevs.py
 
 # --- IDE ---
 .idea/
