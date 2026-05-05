@@ -47,16 +47,19 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # 4. Databáza (PostgreSQL musí bežať a databáza "DP" existovať)
+#    Predvolené prihl. údaje v settings.py: user=postgres, password=postgres
 python manage.py migrate
-python manage.py createsuperuser
 
-# 5. Build Docker sandbox image
+# 5. Defaultný superužívateľ: admin / admin123
+python manage.py loaddata initial_superuser
+
+# 6. Build Docker sandbox image
 docker build -t python-runner .
 
-# 6. Spustenie Ollama (v samostatnom termináli)
+# 7. Spustenie Ollama (v samostatnom termináli)
 ollama serve
 
-# 7. Django dev server
+# 8. Django dev server
 python manage.py runserver
 ```
 
